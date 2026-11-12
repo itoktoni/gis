@@ -136,7 +136,7 @@
   color: var(--color-on-primary);
 }
 .btn-primary:hover {
-  background-color: #001d6b;
+  background-color: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 .btn-outline {
   border: 1px solid var(--color-outline);
@@ -345,8 +345,8 @@
 }
 
 .btn-wh-primary {
-  background-color: #00288e;
-  color: #ffffff;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
   border-radius: 0.75rem;
   font-weight: 600;
   font-size: 20px;
@@ -363,12 +363,12 @@
   transform: scale(0.98);
 }
 .btn-wh-primary:hover {
-  background-color: #001d6b;
+  background-color: color-mix(in srgb, var(--color-primary) 85%, black);
 }
 
 .btn-wh-outline {
-  border: 1px solid #00288e;
-  color: #00288e;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
   border-radius: 0.75rem;
   font-weight: 600;
   font-size: 20px;
@@ -492,8 +492,8 @@
   gap: 4px !important;
 }
 .ts-wrapper.multi .item {
-  background: #00288e !important;
-  color: #ffffff !important;
+  background: var(--color-primary) !important;
+  color: var(--color-on-primary) !important;
   border: none !important;
   border-radius: 0.25rem !important;
   padding: 2px 6px !important;
@@ -517,8 +517,8 @@
 }
 .ts-wrapper.focus .ts-control,
 .ts-wrapper .ts-control:focus {
-  border-color: #1e40af !important;
-  box-shadow: 0 0 0 1px #1e40af !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 1px var(--color-primary) !important;
 }
 .ts-wrapper .ts-dropdown {
   background: white !important;
@@ -530,8 +530,8 @@
 }
 .ts-wrapper .ts-dropdown .option.active:hover,
 .ts-wrapper .ts-dropdown .option.active {
-  background: #dde1ff !important;
-  color: #00288e !important;
+  background: var(--color-primary-fixed) !important;
+  color: var(--color-primary) !important;
 }
 .ts-wrapper .ts-placeholder {
   color: #757684 !important;

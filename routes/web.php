@@ -35,7 +35,23 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/kebun', 'KebunController', ['name' => 'kebun']);
 
+    Route::auto('/pt', 'PtController', ['name' => 'pt']);
+
+    Route::auto('/distrik', 'DistrikController', ['name' => 'distrik']);
+
+    Route::auto('/vendor', 'VendorController', ['name' => 'vendor']);
+
+    Route::auto('/divisi', 'DivisiController', ['name' => 'divisi']);
+
+    Route::auto('/voucher', 'VoucherController', ['name' => 'voucher']);
+
+    Route::auto('/voucher-status', 'VoucherStatusController', ['name' => 'voucher-status']);
+
+    Route::auto('/lhp', 'LhpController', ['name' => 'lhp']);
+
     Route::auto('/objek', 'ObjekController', ['name' => 'objek']);
+
+    Route::auto('/kms/document', 'KmsDocumentController', ['name' => 'kms-document']);
 
     Route::get('/native-bridge-test', function () {
         return view('pages.settings.native-bridge-test');

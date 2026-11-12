@@ -78,14 +78,14 @@
                         @enderror
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-full">
+                    <button type="submit" class="w-full h-12 px-5 inline-flex items-center justify-center gap-2 rounded-lg font-semibold text-sm bg-primary text-on-primary hover:bg-primary/90 shadow-sm transition-all active:scale-95">
                         {{ __('Continue') }}
                     </button>
                 </div>
 
                 <div class="mt-4 text-center">
                     <span class="text-sm text-base-content/50">{{ __('or you can') }}</span>
-                    <button type="button" @click="toggleInput()" class="btn btn-ghost btn-sm normal-case underline text-sm ml-1">
+                    <button type="button" @click="toggleInput()" class="text-sm ml-1 text-primary hover:underline font-medium normal-case underline">
                         <span x-show="!showRecoveryInput">{{ __('login using a recovery code') }}</span>
                         <span x-show="showRecoveryInput">{{ __('login using an authentication code') }}</span>
                     </button>

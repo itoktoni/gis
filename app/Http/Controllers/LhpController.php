@@ -1,0 +1,102 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Concerns\ControllerTrait;
+use App\Http\Requests\GeneralRequest;
+use App\Models\Kebun;
+use App\Models\Lhp;
+use Carbon\Carbon;
+
+class LhpController extends Controller
+{
+    use ControllerTrait {
+        postCreate as protected traitPostCreate;
+        postUpdate as protected traitPostUpdate;
+    }
+
+    public function __construct(Lhp $model)
+    {
+        $this->model = $model::getModel();
+        $this->relationFilters = [
+            'lhp_id_kebun' => ['hasKebun', 'kebun_nama'],
+        ];
+    }
+
+    protected function share($data = [])
+    {
+        $default = [
+            'model' => $this->model,
+            'kebunOptions' => Kebun::with('hasPt')->orderBy('kebun_nama')->get()
+                ->mapWithKeys(fn ($k) => [$k->kebun_id => $k->kebun_nama.($k->hasPt ? ' - '.($k->hasPt->pt_kode ?: $k->hasPt->pt_nama) : '')]),
+        ];
+
+        return array_merge($default, $data);
+    }
+
+    protected function baseQuery()
+    {
+        return $this->model->with(['hasKebun.hasPt']);
+    }
+
+    protected function applyDefaultOrder($query): void
+    {
+        if (! request()->input('sort.0')) {
+            $query->orderByDesc('lhp_tanggal')->orderBy('lhp_id_kebun');
+        }
+    }
+
+    public function postCreate(GeneralRequest $request)
+    {
+        $this->mergeDefaults($request);
+
+        return $this->traitPostCreate($request);
+    }
+
+    public function postUpdate(GeneralRequest $request, $id)
+    {
+        $this->mergeDefaults($request);
+
+        return $this->traitPostUpdate($request, $id);
+    }
+
+    public function getExportExcel(GeneralRequest $request)
+    {
+        $tanggal = $request->input('tanggal');
+        $isAll = $request->boolean('all');
+
+        $query = $this->model->with(['hasKebun.hasPt'])->orderBy('lhp_tanggal')->orderBy('lhp_id_kebun');
+
+        if (! $isAll && filled($tanggal)) {
+            $query->whereDate('lhp_tanggal', $tanggal);
+        }
+
+        $data = $query->get();
+        $filename = $isAll || blank($tanggal)
+            ? 'LHP-ALL-'.now()->format('Ymd').'.xls'
+            : 'LHP-'.$tanggal.'.xls';
+
+        return response()
+            ->view('pages.lhp.excel', ['data' => $data, 'tanggal' => $tanggal, 'isAll' => $isAll])
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    private function mergeDefaults(GeneralRequest $request): void
+    {
+        if ($request->filled('lhp_tanggal')) {
+            try {
+                $hari = Carbon::parse($request->input('lhp_tanggal'))->locale('id')->isoFormat('dddd');
+                $request->merge(['lhp_hari' => $hari]);
+            } catch (\Throwable) {
+            }
+        }
+
+        if (! $request->filled('lhp_luas_tm') && $request->filled('lhp_id_kebun')) {
+            $kebun = Kebun::find($request->input('lhp_id_kebun'));
+            if ($kebun && $kebun->kebun_luas_ha) {
+                $request->merge(['lhp_luas_tm' => $kebun->kebun_luas_ha]);
+            }
+        }
+    }
+}

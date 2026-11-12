@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\ControllerTrait;
+use App\Models\Distrik;
 use App\Models\Kebun;
 use App\Models\Objek;
+use App\Models\Pt;
 
 class KebunController extends Controller
 {
@@ -14,6 +16,8 @@ class KebunController extends Controller
     {
         $default = [
             'model' => $this->model,
+            'ptOptions' => Pt::getCodeOptions(),
+            'distrikOptions' => Distrik::getCodeOptions(),
             'statusOptions' => [
                 'aktif' => 'Aktif',
                 'nonaktif' => 'Nonaktif',
@@ -28,5 +32,14 @@ class KebunController extends Controller
     public function __construct(Kebun $model)
     {
         $this->model = $model::getModel();
+        $this->relationFilters = [
+            'kebun_id_pt' => ['hasPt', ['pt_nama', 'pt_kode']],
+            'kebun_id_distrik' => ['hasDistrik', ['distrik_nama', 'distrik_kode']],
+        ];
+    }
+
+    protected function baseQuery()
+    {
+        return $this->model->with(['hasPt', 'hasDistrik']);
     }
 }

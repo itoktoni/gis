@@ -18,7 +18,6 @@
 
         <div class="text-center text-sm text-base-content/60">
             <span>{{ __('Or, return to') }}</span>
-            <a href="{{ route('login') }}" class="link link-primary">{{ __('log in') }}</a>
-        </div>
-    </div>
+            <a href="{{ route('login') }}" class="text-primary hover:underline font-medium">{{ __('log in') }}</a>
+        </div>    </div>
 </x-layouts::auth>

@@ -21,7 +21,7 @@
 
         <div class="text-center text-sm text-base-content/60">
             <span>{{ __('Already have an account?') }}</span>
-            <a href="{{ route('login') }}" class="link link-primary">{{ __('Log in') }}</a>
+            <a href="{{ route('login') }}" class="text-primary hover:underline font-medium">{{ __('Log in') }}</a>
         </div>
     </div>
 </x-layouts::auth>

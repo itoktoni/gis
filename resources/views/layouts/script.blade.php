@@ -87,6 +87,9 @@
     document.addEventListener('DOMContentLoaded', scrollActiveMenuIntoView);
     document.addEventListener('livewire:navigated', scrollActiveMenuIntoView);
 
+    // Leaflet/Turf lazy-loader didefinisikan di layouts/head (harus tersedia
+    // sebelum inline script peta di body). Lihat head.blade.php.
+
     // Escape HTML to prevent XSS in dynamically-created toast content
     function escapeHtml(text) {
         var div = document.createElement('div');

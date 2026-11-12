@@ -8,6 +8,8 @@
             @bind($model ?? null)
 
                 <x-input col="6" name="kebun_nama" label="Nama Kebun" />
+                <x-select col="3" name="kebun_id_pt" label="PT / Grup" :options="$ptOptions" class="search" />
+                <x-select col="3" name="kebun_id_distrik" label="Distrik" :options="$distrikOptions" class="search" />
                 <x-select col="6" name="kebun_status" label="Status" :options="$statusOptions" />
                 <x-input col="4" name="kebun_luas_ha" label="Luas (ha)" type="number" />
                 <x-input col="4" name="kebun_jumlah_pohon" label="Jumlah Pohon" type="number" />
@@ -15,7 +17,6 @@
                 <x-input col="2" name="kebun_lng" label="Longitude" type="number" />
 
                 <div class="col-span-12">
-                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                     <label class="text-sm font-medium">Marking Area Sawit — klik peta untuk tambah titik, geser titik untuk ubah bentuk</label>
                     <div id="kebun-form-map" style="height: 380px;" class="rounded-xl border border-outline-variant mt-2"></div>
                     <div class="flex flex-wrap gap-2 mt-2">
@@ -38,10 +39,11 @@
         <x-action :model="$model" :action="['save']"/>
     </x-form>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <script>
+        // Lihat layouts/head: L/turf dimuat lazy via ensureLeaflet/ensureTurf
+        // agar aman dari "L is not defined" saat Livewire navigate.
         (function () {
+            function bootMap() {
             var polyInput = document.querySelector('[name="kebun_polygon"]');
             var latInput = document.querySelector('[name="kebun_lat"]');
             var lngInput = document.querySelector('[name="kebun_lng"]');
@@ -170,6 +172,24 @@
             }
             polyInput.addEventListener('change', function () { loadFromTextarea(true); });
             loadFromTextarea(!!polyInput.value.trim());
+            } // end bootMap
+
+            function initKebunFormMap() {
+                var el = document.getElementById('kebun-form-map');
+                if (!el || el._leaflet_id) return; // cegah double-init Leaflet
+                if (typeof turf === 'undefined' && typeof window.ensureTurf === 'function') {
+                    window.ensureTurf(function () {
+                        if (typeof window.ensureLeaflet === 'function') window.ensureLeaflet(bootMap);
+                        else if (window.L) bootMap();
+                    });
+                    return;
+                }
+                if (typeof window.ensureLeaflet === 'function') window.ensureLeaflet(bootMap);
+                else if (window.L) bootMap();
+            }
+            document.addEventListener('livewire:navigated', initKebunFormMap);
+            if (document.readyState !== 'loading') initKebunFormMap();
+            else document.addEventListener('DOMContentLoaded', initKebunFormMap);
         })();
     </script>
 </x-layouts::app>

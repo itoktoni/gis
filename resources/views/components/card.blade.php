@@ -1,5 +1,5 @@
 @props(['label' => null, 'icon' => null, 'noGrid' => false])
-<div {{ $attributes->class(['bg-surface-container-lowest mt-5 border border-outline-variant rounded-xl p-6 form-card']) }}>
+<div {{ $attributes->class(['bg-surface-container-lowest mt-5 mb-5 border border-outline-variant rounded-xl p-6 form-card']) }}>
     @if($label)
     <h3 class="font-headline-md text-headline-md text-on-surface pb-4 mb-4 border-b border-outline-variant flex items-center gap-2">
         @if($icon)<span class="material-symbols-outlined text-primary text-xl">{{ $icon }}</span>@endif

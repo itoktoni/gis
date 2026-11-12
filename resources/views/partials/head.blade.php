@@ -15,3 +15,21 @@
 <link rel="manifest" href="/manifest.json">
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+{{-- Dynamic theme color overrides from website settings (sama seperti layouts/head) --}}
+@php
+    $__primary = \App\Models\WebsiteSetting::primaryColor();
+    $__palette = \App\Models\WebsiteSetting::generatePalette($__primary);
+@endphp
+<style>
+    :root {
+        --color-primary: {{ $__primary }};
+        --color-secondary: {{ $__primary }};
+        --color-secondary-container: {{ $__primary }};
+        --color-on-primary: {{ $__palette['on_primary'] }};
+        --color-primary-container: {{ $__palette['primary_container'] }};
+        --color-on-primary-container: {{ $__palette['on_primary_container'] }};
+        --color-primary-fixed: {{ $__palette['primary_fixed'] }};
+        --color-primary-fixed-dim: {{ $__palette['primary_fixed_dim'] }};
+    }
+</style>

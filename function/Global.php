@@ -473,6 +473,98 @@ function uploadFile($file, string $folder = 'uploads', array $options = []): str
 }
 
 /**
+ * Sanitize a document file name (PDF/Office/teks). Mirip sanitizeFileName()
+ * tetapi mengizinkan ekstensi dokumen dan memaksa ekstensi aman lainnya ke txt.
+ *
+ * @param  string  $originalName  Original file name from upload
+ * @return string Sanitized unique file name (e.g., "aB3xK_20260819.pdf")
+ */
+function sanitizeDocumentName(string $originalName): string
+{
+    $name = basename($originalName);
+    $name = str_replace(chr(0), '', $name);
+    $name = preg_replace('/^(php|phar|file|http|https|ftp|data|zip|glob|ssh2|ogg|expect|rar):\/\//i', '', $name);
+
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+    $blocked = ['php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'pht', 'phar',
+        'shtml', 'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'exe', 'bat', 'cmd',
+        'dll', 'so', 'htaccess', 'ini', 'inc', 'asp', 'aspx', 'jsp'];
+    if (in_array($ext, $blocked)) {
+        $ext = 'txt';
+    }
+
+    $allowed = ['pdf', 'docx', 'xlsx', 'txt', 'md', 'csv'];
+    if (! in_array($ext, $allowed)) {
+        $ext = 'txt';
+    }
+
+    $random = substr(str_shuffle('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 8);
+    $date = date('YmdHis');
+
+    return $random.'_'.$date.'.'.$ext;
+}
+
+/**
+ * Upload dokumen KMS (PDF/DOCX/XLSX/TXT/MD/CSV). Validasi MIME via finfo,
+ * simpan ke storage/app/public/{folder}, kembalikan relative path.
+ *
+ * @param  mixed  $file  The uploaded file
+ * @param  string  $folder  Subfolder (mis. 'kms')
+ * @param  array  $options  max_size dalam KB (default 10240)
+ * @return string Relative path (mis. "kms/abc123.pdf")
+ *
+ * @throws InvalidArgumentException
+ */
+function uploadDocument($file, string $folder = 'kms', array $options = []): string
+{
+    if (! $file || ! $file->isValid()) {
+        throw new InvalidArgumentException('File tidak valid atau gagal diupload.');
+    }
+
+    $maxSize = $options['max_size'] ?? 10240; // KB
+
+    if ($file->getSize() > $maxSize * 1024) {
+        throw new InvalidArgumentException("Ukuran file maksimal {$maxSize} KB.");
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file->getPathname());
+
+    $allowedMimes = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'text/markdown',
+        'text/csv',
+        'text/x-csv',
+        'application/csv',
+        'application/zip', // DOCX/XLSX terdeteksi sebagai zip oleh sebagian versi libmagic
+    ];
+    if (! in_array($mime, $allowedMimes)) {
+        throw new InvalidArgumentException("Tipe file tidak diizinkan: {$mime}. Gunakan PDF, DOCX, XLSX, TXT, MD, atau CSV.");
+    }
+
+    $filename = sanitizeDocumentName($file->getClientOriginalName());
+
+    $targetDir = storage_path('app/public/'.$folder);
+    if (! is_dir($targetDir)) {
+        mkdir($targetDir, 0755, true);
+    }
+
+    $path = $file->storeAs('public/'.$folder, $filename);
+
+    if (! $path) {
+        throw new InvalidArgumentException('Gagal menyimpan file.');
+    }
+
+    chmod(storage_path('app/'.$path), 0644);
+
+    return $folder.'/'.$filename;
+}
+
+/**
  * Render a single custom field input for content entry forms.
  */
 function renderFieldInput($fName, $fType, $fValue, $fieldName, $fLabel, $fieldDef = [])

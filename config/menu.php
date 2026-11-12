@@ -22,6 +22,20 @@ return [
             ],
         ],
         [
+            'label' => 'Produksi (LHP)',
+            'items' => [
+                ['route' => 'lhp.getTable', 'icon' => 'agriculture', 'label' => 'LHP Harian', 'match' => ['lhp.*']],
+            ],
+        ],
+        [
+            'label' => 'Pembayaran Vendor',
+            'items' => [
+                ['route' => 'voucher.getTable', 'icon' => 'receipt_long', 'label' => 'Dokumen Voucher', 'match' => ['voucher.*']],
+                ['route' => 'vendor.getTable', 'icon' => 'store', 'label' => 'Vendor', 'match' => ['vendor.*']],
+                ['route' => 'voucher-status.getTable', 'icon' => 'format_list_numbered', 'label' => 'Status Dokumen', 'match' => ['voucher-status.*']],
+            ],
+        ],
+        [
             'label' => 'GIS Sawit',
             'items' => [
                 ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun Sawit', 'match' => ['kebun.*']],
@@ -29,23 +43,33 @@ return [
             ],
         ],
         [
-            'label' => 'Master Data',
+            'label' => 'KMS',
             'items' => [
-                ['route' => 'user.getTable', 'icon' => 'manage_accounts', 'label' => 'Users', 'match' => ['user.*']],
+                ['route' => 'kms-document.getTable', 'icon' => 'folder', 'label' => 'Dokumen', 'match' => ['kms-document.getTable', 'kms-document.getCreate', 'kms-document.getUpdate', 'kms-document.getDelete', 'kms-document.getDownload']],
+                ['route' => 'kms-document.getChat', 'icon' => 'forum', 'label' => 'Tanya KMS'],
+                ['route' => 'divisi.getTable', 'icon' => 'groups', 'label' => 'Divisi', 'match' => ['divisi.*']],
             ],
         ],
         [
-            'label' => 'CMS',
+            'label' => 'Master Data',
             'items' => [
-                ['route' => 'cms-type.getTable', 'icon' => 'category', 'label' => 'Types', 'match' => ['cms-type.*']],
-                ['route' => 'field.getTable', 'icon' => 'input', 'label' => 'Fields', 'match' => ['field.*']],
-                ['route' => 'section.getTable', 'icon' => 'view_agenda', 'label' => 'Sections', 'match' => ['section.*']],
-                ['route' => 'content.getTable', 'icon' => 'article', 'label' => 'Content', 'match' => ['content.*']],
-                ['route' => 'category.getTable', 'icon' => 'sell', 'label' => 'Categories', 'match' => ['category.*']],
-                ['route' => 'tag.getTable', 'icon' => 'label', 'label' => 'Tags', 'match' => ['tag.*']],
-                ['route' => 'menu.getTable', 'icon' => 'menu', 'label' => 'Menus', 'match' => ['menu.*']],
+                ['route' => 'pt.getTable', 'icon' => 'business', 'label' => 'PT / Grup', 'match' => ['pt.*']],
+                ['route' => 'distrik.getTable', 'icon' => 'map', 'label' => 'Distrik', 'match' => ['distrik.*']],
+                ['route' => 'user.getTable', 'icon' => 'manage_accounts', 'label' => 'Users', 'match' => ['user.*']],
             ],
         ],
+        // [
+        //     'label' => 'CMS',
+        //     'items' => [
+        //         ['route' => 'cms-type.getTable', 'icon' => 'category', 'label' => 'Types', 'match' => ['cms-type.*']],
+        //         ['route' => 'field.getTable', 'icon' => 'input', 'label' => 'Fields', 'match' => ['field.*']],
+        //         ['route' => 'section.getTable', 'icon' => 'view_agenda', 'label' => 'Sections', 'match' => ['section.*']],
+        //         ['route' => 'content.getTable', 'icon' => 'article', 'label' => 'Content', 'match' => ['content.*']],
+        //         ['route' => 'category.getTable', 'icon' => 'sell', 'label' => 'Categories', 'match' => ['category.*']],
+        //         ['route' => 'tag.getTable', 'icon' => 'label', 'label' => 'Tags', 'match' => ['tag.*']],
+        //         ['route' => 'menu.getTable', 'icon' => 'menu', 'label' => 'Menus', 'match' => ['menu.*']],
+        //     ],
+        // ],
         [
             'label' => 'Settings',
             'items' => [

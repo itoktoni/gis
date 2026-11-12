@@ -10,9 +10,13 @@ class Kebun extends BaseModel
 
     protected $fillable = [
         'kebun_nama',
+        'kebun_id_pt',
+        'kebun_id_distrik',
         'kebun_luas_ha',
         'kebun_jumlah_pohon',
         'kebun_status',
+        'kebun_kelola',
+        'kebun_kabupaten',
         'kebun_lat',
         'kebun_lng',
         'kebun_polygon',
@@ -20,11 +24,15 @@ class Kebun extends BaseModel
 
     public static $filterColumns = [
         'kebun_nama' => 'Nama',
+        'kebun_id_pt' => 'PT / Grup',
+        'kebun_id_distrik' => 'Distrik',
         'kebun_status' => 'Status',
     ];
 
     public static $sortColumns = [
         'kebun_nama',
+        'kebun_id_pt',
+        'kebun_id_distrik',
         'kebun_luas_ha',
         'kebun_jumlah_pohon',
         'kebun_status',
@@ -50,10 +58,34 @@ class Kebun extends BaseModel
         return $this->hasMany(Objek::class, 'objek_id_kebun', 'kebun_id');
     }
 
+    public function hasPt()
+    {
+        return $this->belongsTo(Pt::class, 'kebun_id_pt', 'pt_id');
+    }
+
+    public function hasDistrik()
+    {
+        return $this->belongsTo(Distrik::class, 'kebun_id_distrik', 'distrik_id');
+    }
+
+    public function hasLhp()
+    {
+        return $this->hasMany(Lhp::class, 'lhp_id_kebun', 'kebun_id');
+    }
+
+    public function hasVoucher()
+    {
+        return $this->hasMany(Voucher::class, 'voucher_id_kebun', 'kebun_id');
+    }
+
     public function rules(): array
     {
         return [
             'kebun_nama' => 'required|string|max:255',
+            'kebun_id_pt' => 'nullable|exists:pt,pt_id',
+            'kebun_id_distrik' => 'nullable|exists:distrik,distrik_id',
+            'kebun_kelola' => 'nullable|string|max:20',
+            'kebun_kabupaten' => 'nullable|string|max:50',
             'kebun_luas_ha' => 'nullable|numeric|min:0',
             'kebun_jumlah_pohon' => 'nullable|integer|min:0',
             'kebun_status' => 'nullable|string|max:50',

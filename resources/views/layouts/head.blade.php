@@ -23,11 +23,66 @@
     <script src="{{ asset('js/apexcharts.min.js') }}"></script>
     <script src="{{ asset('js/table.js') }}"></script>
     {{-- Dynamic theme color overrides from website settings --}}
+    @php
+        $__primary = \App\Models\WebsiteSetting::primaryColor();
+        $__palette = \App\Models\WebsiteSetting::generatePalette($__primary);
+    @endphp
     <style>
         :root {
-            --color-primary: {{ \App\Models\WebsiteSetting::primaryColor() }};
+            --color-primary: {{ $__primary }};
+            --color-secondary: {{ $__primary }};
+            --color-secondary-container: {{ $__primary }};
+            --color-on-primary: {{ $__palette['on_primary'] }};
+            --color-primary-container: {{ $__palette['primary_container'] }};
+            --color-on-primary-container: {{ $__palette['on_primary_container'] }};
+            --color-primary-fixed: {{ $__palette['primary_fixed'] }};
+            --color-primary-fixed-dim: {{ $__palette['primary_fixed_dim'] }};
         }
     </style>
+    {{-- Leaflet/Turf lazy-loader — harus di head agar tersedia sebelum inline
+        script peta di body jalan. Mencegah "Uncaught ReferenceError: L is not
+        defined" saat Livewire navigate (inline L.map dieksekusi sebelum
+        unpkg script selesai dimuat). Pakai: window.ensureLeaflet(fn). --}}
+    <script>
+        window.ensureLeaflet = function (cb) {
+            function ensureCss() {
+                if (!document.querySelector('link[data-leaflet]')) {
+                    var l = document.createElement('link');
+                    l.rel = 'stylesheet';
+                    l.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                    l.setAttribute('data-leaflet', '');
+                    document.head.appendChild(l);
+                }
+            }
+            ensureCss();
+            if (window.L) { cb(); return; }
+            var existing = document.querySelector('script[data-leaflet]');
+            if (existing) {
+                existing.addEventListener('load', cb, { once: true });
+                return;
+            }
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            s.setAttribute('data-leaflet', '');
+            s.onload = cb;
+            s.onerror = function () { console.warn('Failed to load Leaflet from unpkg.'); };
+            document.head.appendChild(s);
+        };
+        window.ensureTurf = function (cb) {
+            if (window.turf) { cb(); return; }
+            var existing = document.querySelector('script[data-turf]');
+            if (existing) {
+                existing.addEventListener('load', cb, { once: true });
+                return;
+            }
+            var s = document.createElement('script');
+            s.src = 'https://unpkg.com/@turf/turf@6/turf.min.js';
+            s.setAttribute('data-turf', '');
+            s.onload = cb;
+            s.onerror = function () { console.warn('Failed to load Turf.js from unpkg.'); };
+            document.head.appendChild(s);
+        };
+    </script>
     @include('components.printer-js')
     @stack('styles')
 </head>

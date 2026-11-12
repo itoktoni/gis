@@ -6,10 +6,9 @@
         </div>
 
         @if (session('status') == 'verification-link-sent')
-            <div class="alert alert-success">
-                <span class="icon-[tabler--check] size-5"></span>
-                <span>{{ __('A new verification link has been sent to the email address you provided during registration.') }}</span>
-            </div>
+            <x-alert type="success">
+                {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+            </x-alert>
         @endif
 
         <div class="bg-base-100 rounded-lg shadow-sm p-4 space-y-4">

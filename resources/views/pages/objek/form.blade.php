@@ -14,7 +14,6 @@
                 <x-input col="3" name="objek_lng" label="Longitude" type="number" />
 
                 <div class="col-span-12">
-                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                     <label class="text-sm font-medium">Tandai Lokasi — klik peta untuk menaruh pin objek</label>
                     <div id="objek-form-map" style="height: 320px;" class="rounded-xl border border-outline-variant mt-2"></div>
                     <div id="wilayah-info" class="mt-2 text-xs rounded-xl bg-surface-container px-4 py-3">
@@ -28,9 +27,11 @@
         <x-action :model="$model" :action="['save']"/>
     </x-form>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Lihat layouts/head: L dimuat lazy via ensureLeaflet agar aman
+        // dari "L is not defined" saat Livewire navigate.
         (function () {
+            function bootMap() {
             var latInput = document.querySelector('[name="objek_lat"]');
             var lngInput = document.querySelector('[name="objek_lng"]');
             var infoEl = document.getElementById('wilayah-info');
@@ -85,6 +86,17 @@
                 placePin(parseFloat(latInput.value), parseFloat(lngInput.value));
                 map.setView([parseFloat(latInput.value), parseFloat(lngInput.value)], 14);
             }
+            } // end bootMap
+
+            function initObjekFormMap() {
+                var el = document.getElementById('objek-form-map');
+                if (!el || el._leaflet_id) return; // cegah double-init Leaflet
+                if (typeof window.ensureLeaflet === 'function') window.ensureLeaflet(bootMap);
+                else if (window.L) bootMap();
+            }
+            document.addEventListener('livewire:navigated', initObjekFormMap);
+            if (document.readyState !== 'loading') initObjekFormMap();
+            else document.addEventListener('DOMContentLoaded', initObjekFormMap);
         })();
     </script>
 </x-layouts::app>

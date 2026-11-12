@@ -16,7 +16,6 @@
         </x-filter>
 
         {{-- Aggregate GIS map --}}
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <x-card label="Peta Area Sawit" :noGrid="true">
             <div class="flex flex-col sm:flex-row gap-3 mb-3">
                 <div class="rounded-xl bg-surface-container px-4 py-3">
@@ -57,7 +56,7 @@
                     <x-table-row-checkbox :model="$model" :value="$table->field_primary" />
                     <x-table-action :model="$model" :id="$table->field_primary" />
                     @foreach ($model::$sortColumns as $column)
-                    <td>{{ $table->$column }}</td>
+                    <td>@if($column === 'kebun_id_pt'){{ $table->hasPt ? $table->hasPt->pt_kode.' - '.$table->hasPt->pt_nama : '-' }}@elseif($column === 'kebun_id_distrik'){{ $table->hasDistrik ? $table->hasDistrik->distrik_kode.' - '.$table->hasDistrik->distrik_nama : '-' }}@else{{ $table->$column }}@endif</td>
                     @endforeach
                 </tr>
                 @endforeach
@@ -68,7 +67,9 @@
                 <div class="p-3 space-y-3" id="mBody">
                     @foreach($data as $table)
                     <div class="border border-outline-variant rounded-xl p-4 bg-surface-container-lowest shadow-sm" data-id="{{ $table->field_primary }}">
-                        <p class="text-sm font-bold text-on-surface truncate mb-3">{{ $table->kebun_nama }}</p>
+                        <p class="text-sm font-bold text-on-surface truncate mb-1">{{ $table->kebun_nama }}</p>
+                        <p class="text-[11px] text-primary font-medium mb-1">{{ $table->hasPt ? $table->hasPt->pt_kode.' - '.$table->hasPt->pt_nama : 'Tanpa PT' }}</p>
+                        <p class="text-[11px] text-on-surface-variant mb-3">{{ $table->hasDistrik ? $table->hasDistrik->distrik_kode.' - '.$table->hasDistrik->distrik_nama : 'Tanpa Distrik' }}</p>
                         <div class="grid grid-cols-2 gap-3 mb-3">
                             <div>
                                 <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Luas</p>
@@ -122,9 +123,12 @@
             ];
         }
     @endphp
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // window.ensureLeaflet dimuat di layouts/head — jangan panggil
+        // L.* sebelum Leaflet siap, kalau tidak Livewire navigate melempar
+        // "Uncaught ReferenceError: L is not defined".
         (function () {
+            function bootMap() {
             var rows = @json($mapRows);
             var map = L.map('kebun-map').setView([-2.5, 118], 5);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -194,6 +198,17 @@
                     focusKebun(card.getAttribute('data-id'));
                 });
             });
+            } // end bootMap
+
+            function initKebunMap() {
+                var el = document.getElementById('kebun-map');
+                if (!el || el._leaflet_id) return; // cegah double-init Leaflet
+                if (typeof window.ensureLeaflet === 'function') window.ensureLeaflet(bootMap);
+                else if (window.L) bootMap();
+            }
+            document.addEventListener('livewire:navigated', initKebunMap);
+            if (document.readyState !== 'loading') initKebunMap();
+            else document.addEventListener('DOMContentLoaded', initKebunMap);
         })();
     </script>
 </x-layouts::app>

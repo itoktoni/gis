@@ -15,7 +15,7 @@
 
                 <div class="flex items-center justify-between">
                     <label class="cursor-pointer label justify-start gap-2">
-                        <input type="checkbox" name="remember" class="checkbox checkbox-primary checkbox-sm" {{ old('remember') ? 'checked' : '' }} />
+                        <input type="checkbox" name="remember" class="checkbox-sm accent-primary" {{ old('remember') ? 'checked' : '' }} />
                         <span class="label-text text-sm">{{ __('Remember me') }}</span>
                     </label>
                 </div>
@@ -27,7 +27,7 @@
         @if (Route::has('password.request'))
             <div class="text-center text-sm text-base-content/60">
                 <span>{{ __("Don't have an account?") }}</span>
-                <a href="{{ route('register') }}" class="link link-primary">{{ __('Sign up') }}</a>
+                <a href="{{ route('register') }}" class="text-primary hover:underline font-medium">{{ __('Sign up') }}</a>
             </div>
         @endif
     </div>

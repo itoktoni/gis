@@ -1,7 +1,117 @@
 <x-layouts::app title="Dashboard">
     <div>
-        <div class="mb-6">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-2xl font-bold text-on-surface">Dashboard</h2>
+            <a href="{{ route('lhp.getCreate') }}" wire:navigate class="inline-flex items-center gap-2 rounded-lg bg-primary text-on-primary px-4 py-2 text-sm font-semibold hover:bg-primary/90">
+                <span class="material-symbols-outlined text-lg">add</span>
+                Input LHP Hari Ini
+            </a>
+        </div>
+
+        {{-- LHP Harian --}}
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 form-card mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-outline-variant">
+                <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl">agriculture</span>
+                    LHP Harian — {{ $lhpStats['tanggal'] ?? '-' }}
+                </h3>
+                <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
+                    <input type="date" name="tanggal" value="{{ $lhpStats['tanggal_raw'] }}" class="h-10 px-3 bg-white border border-outline-variant rounded-lg text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary" onchange="this.form.submit()">
+                    <a href="{{ route('lhp.getTable') }}" wire:navigate class="text-sm text-primary hover:underline font-medium">Semua data</a>
+                </form>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-5 rounded-xl bg-surface-container px-4 py-3">
+                <span class="material-symbols-outlined text-primary">download</span>
+                <span class="text-sm text-on-surface-variant">Export {{ number_format($lhpPerKebun->count(), 0, ',', '.') }} baris tanggal ini ke Excel (16 kolom format DB_All)</span>
+                <span class="ml-auto flex items-center gap-2">
+                    <a href="{{ route('lhp.getExportExcel', ['tanggal' => $lhpStats['tanggal_raw']]) }}" class="inline-flex items-center gap-2 rounded-lg bg-primary text-on-primary px-4 py-2 text-sm font-semibold hover:bg-primary/90">
+                        <span class="material-symbols-outlined text-lg">table_view</span>
+                        Export Excel
+                    </a>
+                    <a href="{{ route('lhp.getExportExcel', ['all' => 1]) }}" class="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container">
+                        Semua Data
+                    </a>
+                </span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+                <div class="bg-surface-container rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">scale</span>
+                        </div>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase">Produksi Panen</span>
+                    </div>
+                    <span class="text-2xl font-bold text-primary">{{ number_format($lhpStats['produksi_panen'], 0, ',', '.') }}</span>
+                    <span class="text-xs text-on-surface-variant">kg • {{ number_format($lhpStats['janjang_panen'], 0, ',', '.') }} jjg</span>
+                </div>
+                <div class="bg-surface-container rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-success">local_shipping</span>
+                        </div>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase">Produksi Kirim (TBS)</span>
+                    </div>
+                    <span class="text-2xl font-bold text-success">{{ number_format($lhpStats['produksi_kirim'], 0, ',', '.') }}</span>
+                    <span class="text-xs text-on-surface-variant">kg • {{ number_format($lhpStats['janjang_kirim'], 0, ',', '.') }} jjg</span>
+                </div>
+                <div class="bg-surface-container rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-warning">group</span>
+                        </div>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase">Kebun Lapor</span>
+                    </div>
+                    <span class="text-2xl font-bold">{{ $lhpStats['kebun_lapor'] }}<span class="text-sm text-on-surface-variant font-normal"> / {{ $lhpStats['total_kebun'] }}</span></span>
+                    <span class="text-xs text-on-surface-variant block">{{ number_format($lhpStats['luas_panen'], 2, ',', '.') }} ha • {{ number_format($lhpStats['tk_hk'], 0, ',', '.') }} HK</span>
+                </div>
+                <div class="bg-surface-container rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-info">monitoring</span>
+                        </div>
+                        <span class="text-xs font-semibold text-on-surface-variant uppercase">Rata-rata BJR</span>
+                    </div>
+                    @php $avgBjr = $lhpStats['janjang_kirim'] ? $lhpStats['produksi_kirim'] / $lhpStats['janjang_kirim'] : 0; @endphp
+                    <span class="text-2xl font-bold">{{ number_format($avgBjr, 2, ',', '.') }}</span>
+                    <span class="text-xs text-on-surface-variant">kg/jjg kirim</span>
+                </div>
+            </div>
+            @if($lhpPerKebun->isNotEmpty())
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm min-w-[720px]">
+                    <thead>
+                        <tr class="text-left text-xs text-on-surface-variant uppercase border-b border-outline-variant">
+                            <th class="pb-3 pr-4">Kebun</th>
+                            <th class="pb-3 pr-4 text-right">Luas Panen</th>
+                            <th class="pb-3 pr-4 text-right">TK</th>
+                            <th class="pb-3 pr-4 text-right">Jjg Panen</th>
+                            <th class="pb-3 pr-4 text-right">Prod Panen</th>
+                            <th class="pb-3 pr-4 text-right">Jjg Kirim</th>
+                            <th class="pb-3 text-right">Prod Kirim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($lhpPerKebun as $row)
+                        <tr class="border-b border-outline-variant/50">
+                            <td class="py-2 pr-4 font-medium">{{ $row->hasKebun?->kebun_nama ?? '-' }}@if($row->hasKebun?->hasPt)<span class="block text-[10px] font-normal text-on-surface-variant">{{ $row->hasKebun->hasPt->pt_nama }}</span>@endif</td>
+                            <td class="py-2 pr-4 text-right">{{ number_format($row->lhp_luas_panen, 2, ',', '.') }}</td>
+                            <td class="py-2 pr-4 text-right">{{ number_format($row->lhp_tk_hk, 0, ',', '.') }}</td>
+                            <td class="py-2 pr-4 text-right">{{ number_format($row->lhp_janjang_panen, 0, ',', '.') }}</td>
+                            <td class="py-2 pr-4 text-right">{{ number_format($row->lhp_produksi_panen_kg, 0, ',', '.') }}</td>
+                            <td class="py-2 pr-4 text-right">{{ number_format($row->lhp_janjang_kirim, 0, ',', '.') }}</td>
+                            <td class="py-2 text-right font-semibold text-primary">{{ number_format($row->lhp_produksi_kirim_kg, 0, ',', '.') }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <div class="text-center py-8 text-on-surface-variant">
+                <span class="material-symbols-outlined text-4xl mb-2 block">agriculture</span>
+                <p class="text-sm mb-3">Belum ada LHP tanggal ini.</p>
+                <a href="{{ route('lhp.getCreate') }}" wire:navigate class="inline-flex items-center gap-2 rounded-lg bg-primary text-on-primary px-4 py-2 text-sm font-semibold">Input sekarang</a>
+            </div>
+            @endif
         </div>
 
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 form-card mb-5">
