@@ -1,7 +1,23 @@
 @php
-    $bottomNav = config('menu.bottom_nav');
+    $role = auth()->user()->role ?? 'guest';
+    $navByRole = config('menu.bottom_nav', []);
+    $bottomNav = $navByRole[$role] ?? $navByRole['default'] ?? [];
+
+    // Pengaman: saring item yang di-deny untuk role ini.
+    $restrict = config('permision', []);
+    $prefixOf = fn ($routeName) => str_contains($routeName, '.') ? str($routeName)->before('.')->toString() : $routeName;
+    $bottomNav = collect($bottomNav)->reject(function ($item) use ($role, $restrict, $prefixOf) {
+        if (! isset($restrict[$role])) {
+            return false;
+        }
+
+        return ! empty($restrict[$role][$prefixOf($item['route'] ?? '')]);
+    })->values();
+
+    $centerIndex = intdiv($bottomNav->count(), 2);
 @endphp
 
+@if($bottomNav->isNotEmpty())
 <nav class="md:hidden fixed inset-x-0 bottom-0 z-50 h-16 bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
     <div class="flex items-center justify-around h-16 px-2">
         @foreach($bottomNav as $index => $item)
@@ -9,7 +25,7 @@
                 $routeName = $item['route'];
                 $url = route($routeName);
                 $isActive = request()->routeIs($routeName) || request()->routeIs($routeName . '.*');
-                $isCenter = $index === 2;
+                $isCenter = $index === $centerIndex;
             @endphp
 
             @if($isCenter)
@@ -31,3 +47,4 @@
         @endforeach
     </div>
 </nav>
+@endif

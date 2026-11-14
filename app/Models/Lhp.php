@@ -67,7 +67,11 @@ class Lhp extends BaseModel
         $ignoreId = request()->route('id');
 
         return [
-            'lhp_id_kebun' => 'required|exists:kebun,kebun_id',
+            'lhp_id_kebun' => array_filter([
+                'required',
+                'exists:kebun,kebun_id',
+                allowedKebunIds() ? Rule::in(allowedKebunIds()) : null,
+            ]),
             'lhp_tanggal' => [
                 'required',
                 'date',

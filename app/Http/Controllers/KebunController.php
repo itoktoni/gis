@@ -40,6 +40,6 @@ class KebunController extends Controller
 
     protected function baseQuery()
     {
-        return $this->model->with(['hasPt', 'hasDistrik']);
+        return scopeKebun($this->model->with(['hasPt', 'hasDistrik'])->withCount(['hasMasalah as has_masalah_aktif_count' => fn ($q) => $q->where('masalah_status', '!=', 'selesai')]), 'kebun_id');
     }
 }

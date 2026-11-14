@@ -2,13 +2,33 @@
 
 @php
     $menu = config('menu.sidebar');
+    $role = auth()->user()->role ?? 'guest';
+    $restrict = config('permision', []);
+
+    // Prefix modul dari nama route: "voucher.getTable" -> "voucher".
+    $prefixOf = fn ($routeName) => str_contains($routeName, '.') ? str($routeName)->before('.')->toString() : $routeName;
+
+    $isBlocked = function ($routeName) use ($role, $restrict, $prefixOf) {
+        // admin/developer/user/editor tidak ada di matrix -> lihat semua.
+        if (! isset($restrict[$role])) {
+            return false;
+        }
+
+        return ! empty($restrict[$role][$prefixOf($routeName)]);
+    };
 @endphp
 
 @foreach($menu as $section)
+    @php
+        $visible = collect($section['items'] ?? [])->reject(fn ($item) => $isBlocked($item['route'] ?? ''));
+    @endphp
+    @if($visible->isEmpty())
+        @continue
+    @endif
     @if($section['label'])
         <div class="px-4 pt-4 pb-1 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">{{ $section['label'] }}</div>
     @endif
-    @foreach($section['items'] as $item)
+    @foreach($visible as $item)
         @php
             $routeName = $item['route'];
             $url = route($routeName);

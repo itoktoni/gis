@@ -141,6 +141,39 @@ function moduleRoute($action = null, $params = [])
     return $route;
 }
 
+/**
+ * Daftar kebun_id yang boleh diakses user login, atau null bila tidak dibatasi.
+ * Aturan: user yang punya baris di kebun_user hanya boleh mengakses kebun itu.
+ */
+function allowedKebunIds(): ?array
+{
+    return auth()->user()?->allowedKebunIds();
+}
+
+/**
+ * Terapkan scope kebun ke query. Tanpa efek bila user tidak dibatasi.
+ */
+function scopeKebun($query, string $column)
+{
+    if ($ids = allowedKebunIds()) {
+        $query->whereIn($column, $ids);
+    }
+
+    return $query;
+}
+
+/**
+ * Opsi dropdown kebun yang sudah difilter sesuai hak akses user.
+ */
+function kebunOptions(): array
+{
+    return \App\Models\Kebun::with('hasPt')->orderBy('kebun_nama')
+        ->when(allowedKebunIds(), fn ($q, $ids) => $q->whereIn('kebun_id', $ids))
+        ->get()
+        ->mapWithKeys(fn ($k) => [$k->kebun_id => $k->kebun_nama.($k->hasPt ? ' - '.($k->hasPt->pt_kode ?: $k->hasPt->pt_nama) : '')])
+        ->all();
+}
+
 function nominalQRIS($qris_data, $amount)
 {
     $amountStr = number_format($amount, 2, '.', '');

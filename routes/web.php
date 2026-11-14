@@ -47,11 +47,19 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/voucher-status', 'VoucherStatusController', ['name' => 'voucher-status']);
 
+    Route::auto('/masalah', 'MasalahController', ['name' => 'masalah']);
+
     Route::auto('/lhp', 'LhpController', ['name' => 'lhp']);
+
+    Route::auto('/lhp-report', 'LhpReportController', ['name' => 'lhp-report', 'only' => ['getTable', 'getPrint', 'getExportExcel']]);
 
     Route::auto('/objek', 'ObjekController', ['name' => 'objek']);
 
     Route::auto('/kms/document', 'KmsDocumentController', ['name' => 'kms-document']);
+
+    Route::auto('/surat', 'SuratController', ['name' => 'surat']);
+
+    Route::auto('/surat-template', 'SuratTemplateController', ['name' => 'surat-template']);
 
     Route::get('/native-bridge-test', function () {
         return view('pages.settings.native-bridge-test');

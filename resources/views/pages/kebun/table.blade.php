@@ -30,7 +30,8 @@
             <div id="kebun-map" style="height: 380px;" class="rounded-xl border border-outline-variant"></div>
             <div class="flex flex-wrap gap-4 mt-2 text-xs text-on-surface-variant">
                 <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#3388ff"></span> Blok kebun (area)</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#e11d48"></span> Objek / POS</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#dc2626"></span> Bermasalah</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#16a34a"></span> Objek / POS</span>
             </div>
         </x-card>
 
@@ -48,6 +49,7 @@
                 @foreach ($model::$sortColumns as $column)
                 <x-table-sort field="{{ $column }}" label="{{ formatLabel($column) }}" :sortField="$sortField" :sortDir="$sortDir" />
                 @endforeach
+                <th>Masalah</th>
             </x-slot:head>
 
             <x-slot:body>
@@ -58,6 +60,7 @@
                     @foreach ($model::$sortColumns as $column)
                     <td>@if($column === 'kebun_id_pt'){{ $table->hasPt ? $table->hasPt->pt_kode.' - '.$table->hasPt->pt_nama : '-' }}@elseif($column === 'kebun_id_distrik'){{ $table->hasDistrik ? $table->hasDistrik->distrik_kode.' - '.$table->hasDistrik->distrik_nama : '-' }}@else{{ $table->$column }}@endif</td>
                     @endforeach
+                    <td>@if(($table->has_masalah_aktif_count ?? 0) > 0)<a href="/masalah/table?filters[masalah_id_kebun][$eq]={{ $table->field_primary }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 hover:underline"><span class="material-symbols-outlined text-sm">warning</span>{{ $table->has_masalah_aktif_count }}</a>@else<span class="text-on-surface-variant">-</span>@endif</td>
                 </tr>
                 @endforeach
             </x-slot:body>
@@ -87,6 +90,13 @@
                                 <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Koordinat</p>
                                 <p class="text-xs font-medium text-on-surface">{{ $table->kebun_lat ?? '-' }}, {{ $table->kebun_lng ?? '-' }}</p>
                             </div>
+                            @if(($table->has_masalah_aktif_count ?? 0) > 0)
+                            <div class="col-span-2">
+                                <a href="/masalah/table?filters[masalah_id_kebun][$eq]={{ $table->field_primary }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700">
+                                    <span class="material-symbols-outlined text-sm">warning</span>{{ $table->has_masalah_aktif_count }} permasalahan terbuka →
+                                </a>
+                            </div>
+                            @endif
                         </div>
                         <div class="flex items-center justify-between pt-2 border-t border-outline-variant/50">
                             <span class="text-[9px] font-mono text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">{{ $table->field_primary }}</span>
@@ -120,6 +130,7 @@
                 'lat' => $row->kebun_lat,
                 'lng' => $row->kebun_lng,
                 'polygon' => $row->kebun_polygon,
+                'masalah' => (int) ($row->has_masalah_aktif_count ?? 0),
             ];
         }
     @endphp
@@ -136,18 +147,27 @@
             var layersById = {};
             rows.forEach(function (r) {
                 var layer = null;
+                var bermasalah = (r.masalah || 0) > 0;
+                var warna = bermasalah ? '#dc2626' : '#3388ff';
+                function popupHtml() {
+                    var h = '<b>' + (r.nama || '') + '</b><br>' + (r.luas || '-') + ' ha • ' + (r.pohon || 0) + ' pohon';
+                    if (bermasalah) {
+                        h += '<br><a href="/masalah/table?filters[masalah_id_kebun][$eq]=' + r.id + '" style="color:#dc2626;font-weight:bold;">⚠ ' + r.masalah + ' permasalahan terbuka →</a>';
+                    }
+                    return h;
+                }
                 if (r.polygon) {
                     try {
                         var gj = JSON.parse(r.polygon);
                         var geo = gj.type === 'Feature' ? gj : { type: 'Feature', properties: {}, geometry: gj };
-                        layer = L.geoJSON(geo, { style: { weight: 3, fillOpacity: 0.45 } }).addTo(map);
-                        layer.bindPopup('<b>' + (r.nama || '') + '</b><br>' + (r.luas || '-') + ' ha • ' + (r.pohon || 0) + ' pohon');
+                        layer = L.geoJSON(geo, { style: { color: warna, weight: 3, fillColor: warna, fillOpacity: 0.45 } }).addTo(map);
+                        layer.bindPopup(popupHtml());
                         layer.eachLayer(function (l) { bounds.push(l.getBounds()); });
                     } catch (e) { layer = null; }
                 }
                 if (r.lat && r.lng) {
-                    var dot = L.circleMarker([r.lat, r.lng], { radius: 7, weight: 2, fillOpacity: 0.9 }).addTo(map);
-                    dot.bindPopup('<b>' + (r.nama || '') + '</b><br>' + (r.luas || '-') + ' ha • ' + (r.pohon || 0) + ' pohon');
+                    var dot = L.circleMarker([r.lat, r.lng], { radius: bermasalah ? 9 : 7, color: warna, fillColor: warna, weight: 2, fillOpacity: 0.9 }).addTo(map);
+                    dot.bindPopup(popupHtml());
                     if (!layer) bounds.push(L.latLngBounds([[r.lat, r.lng], [r.lat, r.lng]]));
                     layer = layer || dot;
                 }
@@ -167,7 +187,7 @@
             var objekRows = @json($objekRows);
             objekRows.forEach(function (o) {
                 if (!o.lat || !o.lng) return;
-                var pin = L.circleMarker([o.lat, o.lng], { radius: 9, color: '#e11d48', fillColor: '#e11d48', fillOpacity: 0.9, weight: 2 }).addTo(map);
+                var pin = L.circleMarker([o.lat, o.lng], { radius: 9, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.9, weight: 2 }).addTo(map);
                 pin.bindTooltip(o.nama || 'Objek');
                 pin.bindPopup('<b>' + (o.nama || 'Objek') + '</b><br>' + (o.jenis || ''));
                 pin.bringToFront();

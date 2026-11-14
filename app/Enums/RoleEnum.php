@@ -17,12 +17,24 @@ final class RoleEnum extends Enum
 
     const DEVELOPER = 'developer';
 
+    const TANAMAN = 'tanaman';
+
+    const FINANCE = 'finance';
+
+    const SEKRETARIS = 'sekretaris';
+
+    const DISTRIK = 'distrik';
+
     public static function getDescription(mixed $value): string
     {
         return match ($value) {
             self::ADMIN => 'Administrator Utama',
             self::EDITOR => 'Editor',
             self::DEVELOPER => 'Developer',
+            self::TANAMAN => 'Tim Tanaman (LHP)',
+            self::FINANCE => 'Tim Finance (Voucher)',
+            self::SEKRETARIS => 'Sekretaris (Surat)',
+            self::DISTRIK => 'Distrik (Kebun & LHP)',
             self::USER => 'Pengguna Biasa',
             default => parent::getDescription($value),
         };

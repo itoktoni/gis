@@ -113,6 +113,25 @@ class User extends Authenticatable
         return $this->role === 'editor';
     }
 
+    /**
+     * Kebun yang boleh diakses user (many-to-many via kebun_user).
+     * Kosong = tidak dibatasi (akses semua kebun).
+     */
+    public function hasKebunList()
+    {
+        return $this->belongsToMany(Kebun::class, 'kebun_user', 'user_id', 'kebun_id')->withTimestamps();
+    }
+
+    /**
+     * Daftar kebun_id yang boleh diakses, atau null bila tidak dibatasi.
+     */
+    public function allowedKebunIds(): ?array
+    {
+        $ids = $this->hasKebunList()->pluck('kebun.kebun_id')->all();
+
+        return $ids === [] ? null : array_map('intval', $ids);
+    }
+
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPasswordNotification($token));

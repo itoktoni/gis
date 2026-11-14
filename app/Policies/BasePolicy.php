@@ -21,10 +21,14 @@ class BasePolicy
     {
         $role = $user->role ?? 'guest';
 
-        if (isset($this->restrict[$role][$this->module])) {
+        // Kunci bisa nama route penuh (voucher.getTable) atau prefix modul (voucher).
+        $prefix = str_contains($this->module, '.') ? str($this->module)->before('.')->toString() : $this->module;
 
-            if (in_array($permision, $this->restrict[$role][$this->module])) {
-                return true;
+        foreach ([$this->module, $prefix] as $key) {
+            if (isset($this->restrict[$role][$key])) {
+                if (in_array($permision, $this->restrict[$role][$key])) {
+                    return true;
+                }
             }
         }
 

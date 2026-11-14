@@ -8,6 +8,29 @@
             </a>
         </div>
 
+        {{-- Peta Area Sawit --}}
+        <x-card label="Peta Area Sawit" :noGrid="true">
+            <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                <div class="rounded-xl bg-surface-container px-4 py-3">
+                    <p class="text-[10px] uppercase tracking-wide text-on-surface-variant">Total Kebun</p>
+                    <p class="text-lg font-bold">{{ $kebunMap->count() }} kebun</p>
+                </div>
+                <div class="rounded-xl bg-surface-container px-4 py-3">
+                    <p class="text-[10px] uppercase tracking-wide text-on-surface-variant">Bermasalah</p>
+                    <p class="text-lg font-bold text-error">{{ $kebunMap->where('masalah', '>', 0)->count() }} kebun</p>
+                </div>
+                <a href="{{ route('kebun.getTable') }}" wire:navigate class="sm:ml-auto inline-flex items-center justify-center gap-2 self-start rounded-lg border border-outline-variant px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-lg">map</span> Kelola Kebun
+                </a>
+            </div>
+            <div id="dashboard-map" style="height: 380px;" class="rounded-xl border border-outline-variant z-0"></div>
+            <div class="flex flex-wrap gap-4 mt-2 text-xs text-on-surface-variant">
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#3388ff"></span> Blok kebun (area)</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#dc2626"></span> Bermasalah</span>
+                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-full" style="background:#16a34a"></span> Objek / POS</span>
+            </div>
+        </x-card>
+
         {{-- LHP Harian --}}
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 form-card mb-5">
             <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-outline-variant">
@@ -215,4 +238,66 @@
         {!! $userChart->script() !!}
         {!! $notifChart->script() !!}
     @endpush
+
+    <script>
+        // Peta dashboard — pola sama seperti halaman Kebun Sawit.
+        (function () {
+            function bootMap() {
+            var rows = @json($kebunMap);
+            var map = L.map('dashboard-map').setView([-2.5, 118], 5);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            var bounds = [];
+            rows.forEach(function (r) {
+                var layer = null;
+                var bermasalah = (r.masalah || 0) > 0;
+                var warna = bermasalah ? '#dc2626' : '#3388ff';
+                function popupHtml() {
+                    var h = '<b>' + (r.nama || '') + '</b><br>' + (r.luas || '-') + ' ha';
+                    if (bermasalah) {
+                        h += '<br><a href="/masalah/table?filters[masalah_id_kebun][$eq]=' + r.id + '" style="color:#dc2626;font-weight:bold;">⚠ ' + r.masalah + ' permasalahan terbuka →</a>';
+                    }
+                    return h;
+                }
+                if (r.polygon) {
+                    try {
+                        var gj = JSON.parse(r.polygon);
+                        var geo = gj.type === 'Feature' ? gj : { type: 'Feature', properties: {}, geometry: gj };
+                        layer = L.geoJSON(geo, { style: { color: warna, weight: 3, fillColor: warna, fillOpacity: 0.45 } }).addTo(map);
+                        layer.bindPopup(popupHtml());
+                        layer.eachLayer(function (l) { bounds.push(l.getBounds()); });
+                    } catch (e) { layer = null; }
+                }
+                if (r.lat && r.lng) {
+                    var dot = L.circleMarker([r.lat, r.lng], { radius: bermasalah ? 9 : 7, color: warna, fillColor: warna, weight: 2, fillOpacity: 0.9 }).addTo(map);
+                    dot.bindPopup(popupHtml());
+                    if (!layer) bounds.push(L.latLngBounds([[r.lat, r.lng], [r.lat, r.lng]]));
+                    layer = layer || dot;
+                }
+            });
+            if (bounds.length) {
+                var b = bounds[0];
+                for (var i = 1; i < bounds.length; i++) { b.extend(bounds[i]); }
+                map.fitBounds(b.pad(0.2));
+            }
+            var objekRows = @json($objekMap);
+            objekRows.forEach(function (o) {
+                if (!o.objek_lat || !o.objek_lng) return;
+                var pin = L.circleMarker([o.objek_lat, o.objek_lng], { radius: 9, color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.9, weight: 2 }).addTo(map);
+                pin.bindTooltip(o.objek_nama || 'Objek');
+                pin.bindPopup('<b>' + (o.objek_nama || 'Objek') + '</b><br>' + (o.objek_jenis || ''));
+                pin.bringToFront();
+            });
+            } // end bootMap
+
+            function initDashboardMap() {
+                var el = document.getElementById('dashboard-map');
+                if (!el || el._leaflet_id) return; // cegah double-init Leaflet
+                if (typeof window.ensureLeaflet === 'function') window.ensureLeaflet(bootMap);
+                else if (window.L) bootMap();
+            }
+            document.addEventListener('livewire:navigated', initDashboardMap);
+            if (document.readyState !== 'loading') initDashboardMap();
+            else document.addEventListener('DOMContentLoaded', initDashboardMap);
+        })();
+    </script>
 </x-layouts::app>

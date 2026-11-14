@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(CheckPaidPayments::class)->everyMinute();
+Schedule::command('lhp:remind-whatsapp')->dailyAt(config('fonnte.lhp_reminder_at', '12:00'));

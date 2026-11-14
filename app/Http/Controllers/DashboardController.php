@@ -6,6 +6,7 @@ use App\Charts\DashboardChart;
 use App\Models\Kebun;
 use App\Models\Lhp;
 use App\Models\Notification;
+use App\Models\Objek;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -57,7 +58,22 @@ class DashboardController extends Controller
         $lhpPerKebun = (clone $lhpQuery)->orderByDesc('lhp_produksi_kirim_kg')->get();
         $lhpRecent = Lhp::with(['hasKebun.hasPt'])->orderByDesc('lhp_tanggal')->orderByDesc('lhp_id')->limit(10)->get();
 
-        return view('dashboard', compact('stats', 'recentUsers', 'lhpStats', 'lhpPerKebun', 'lhpRecent'))
+        // --- Peta kebun (sama seperti halaman Kebun Sawit) ---
+        $kebunMap = Kebun::with('hasPt')
+            ->withCount(['hasMasalah as has_masalah_aktif_count' => fn ($q) => $q->where('masalah_status', '!=', 'selesai')])
+            ->get()
+            ->map(fn ($row) => [
+                'id' => $row->kebun_id,
+                'nama' => $row->kebun_nama,
+                'luas' => $row->kebun_luas_ha,
+                'masalah' => (int) ($row->has_masalah_aktif_count ?? 0),
+                'lat' => $row->kebun_lat,
+                'lng' => $row->kebun_lng,
+                'polygon' => $row->kebun_polygon,
+            ]);
+        $objekMap = Objek::select('objek_nama', 'objek_jenis', 'objek_lat', 'objek_lng')->get();
+
+        return view('dashboard', compact('stats', 'recentUsers', 'lhpStats', 'lhpPerKebun', 'lhpRecent', 'kebunMap', 'objekMap'))
             ->with('userChart', $chart->userRegistrations())
             ->with('notifChart', $chart->notificationStats());
     }

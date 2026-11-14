@@ -20,6 +20,7 @@ class UsersController extends Controller
         $default = [
             'model' => $this->model,
             'role' => RoleEnum::getOptions(),
+            'kebunOptions' => \App\Models\Kebun::orderBy('kebun_nama')->pluck('kebun_nama', 'kebun_id')->all(),
         ];
 
         return array_merge($default, $data);
@@ -78,17 +79,20 @@ class UsersController extends Controller
 
     public function postCreate(GeneralRequest $request)
     {
+        $kebunIds = $this->validatedKebunIds($request);
         $response = CreateAction::run($request, $this->model);
         $avatar = $this->handleAvatar($request, null);
         if ($avatar !== null) {
             $request->merge(['avatar' => $avatar]);
         }
+        User::where('email', $request->input('email'))->first()?->hasKebunList()->sync($kebunIds);
 
         return $this->response($response);
     }
 
     public function postUpdate(GeneralRequest $request, $id)
     {
+        $kebunIds = $this->validatedKebunIds($request);
         $response = UpdateAction::run($request, $id, $this->model);
 
         $user = $this->model->findOrFail($id);
@@ -98,7 +102,22 @@ class UsersController extends Controller
         if ($avatar !== $existing) {
             $request->merge(['avatar' => $avatar]);
         }
+        $user->hasKebunList()->sync($kebunIds);
 
         return $this->response($response);
+    }
+
+    /**
+     * Sinkronisasi kebun yang boleh diakses user.
+     * Kosong = tidak dibatasi (akses semua kebun).
+     */
+    private function validatedKebunIds(GeneralRequest $request): array
+    {
+        $validated = $request->validate([
+            'kebun_ids' => 'nullable|array',
+            'kebun_ids.*' => 'exists:kebun,kebun_id',
+        ]);
+
+        return array_map('intval', $validated['kebun_ids'] ?? []);
     }
 }

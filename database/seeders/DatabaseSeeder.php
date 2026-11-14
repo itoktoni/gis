@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call(DivisiSeeder::class);
         $this->call(MasterRegIxSeeder::class);
         $this->call(VoucherStatusSeeder::class);
+        $this->call(MasalahSeeder::class);
         $this->call(VoucherSeeder::class);
         $this->call(ObjekSeeder::class);
         $this->call(MenuSeeder::class);

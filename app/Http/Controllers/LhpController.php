@@ -7,6 +7,7 @@ use App\Http\Requests\GeneralRequest;
 use App\Models\Kebun;
 use App\Models\Lhp;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class LhpController extends Controller
 {
@@ -27,8 +28,7 @@ class LhpController extends Controller
     {
         $default = [
             'model' => $this->model,
-            'kebunOptions' => Kebun::with('hasPt')->orderBy('kebun_nama')->get()
-                ->mapWithKeys(fn ($k) => [$k->kebun_id => $k->kebun_nama.($k->hasPt ? ' - '.($k->hasPt->pt_kode ?: $k->hasPt->pt_nama) : '')]),
+            'kebunOptions' => kebunOptions(),
         ];
 
         return array_merge($default, $data);
@@ -36,7 +36,7 @@ class LhpController extends Controller
 
     protected function baseQuery()
     {
-        return $this->model->with(['hasKebun.hasPt']);
+        return scopeKebun($this->model->with(['hasKebun.hasPt']), 'lhp_id_kebun');
     }
 
     protected function applyDefaultOrder($query): void

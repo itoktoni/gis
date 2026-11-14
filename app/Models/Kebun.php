@@ -78,6 +78,11 @@ class Kebun extends BaseModel
         return $this->hasMany(Voucher::class, 'voucher_id_kebun', 'kebun_id');
     }
 
+    public function hasMasalah()
+    {
+        return $this->hasMany(Masalah::class, 'masalah_id_kebun', 'kebun_id');
+    }
+
     public function rules(): array
     {
         return [
