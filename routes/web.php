@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardKebunController;
+use App\Http\Controllers\DisplayController;
 use App\Http\Controllers\WebsiteSettingController;
 use App\Models\Notification;
 use App\Services\CentrifugoService;
@@ -31,6 +33,10 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
+    Route::get('dashboard-kebun', DashboardKebunController::class)->name('dashboard-kebun');
+
+    Route::get('display', DisplayController::class)->name('display');
+
     Route::auto('/user', 'UsersController', ['name' => 'user']);
 
     Route::auto('/kebun', 'KebunController', ['name' => 'kebun']);
@@ -48,6 +54,10 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
     Route::auto('/voucher-status', 'VoucherStatusController', ['name' => 'voucher-status']);
 
     Route::auto('/masalah', 'MasalahController', ['name' => 'masalah']);
+
+    Route::auto('/cuti', 'CutiController', ['name' => 'cuti']);
+
+    Route::auto('/cuti-report', 'CutiReportController', ['name' => 'cuti-report', 'only' => ['getTable', 'getPrint', 'getExportExcel']]);
 
     Route::auto('/lhp', 'LhpController', ['name' => 'lhp']);
 

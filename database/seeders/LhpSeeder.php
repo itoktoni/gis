@@ -59,7 +59,6 @@ class LhpSeeder extends Seeder
                     ['lhp_id_kebun' => $kebunId, 'lhp_tanggal' => $tanggal],
                     [
                         'lhp_hari' => Carbon::parse($tanggal)->locale('id')->isoFormat('dddd'),
-                        'lhp_luas_tm' => $k['luas'],
                         'lhp_luas_panen' => $luasPanen,
                         'lhp_tk_hk' => $tk,
                         'lhp_janjang_panen' => $janjang,

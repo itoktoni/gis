@@ -24,6 +24,8 @@ return [
         [
             'label' => 'Produksi (LHP)',
             'items' => [
+                ['route' => 'dashboard-kebun', 'icon' => 'dashboard', 'label' => 'Dashboard Kebun'],
+                ['route' => 'display', 'icon' => 'tv', 'label' => 'Display TV'],
                 ['route' => 'lhp.getTable', 'icon' => 'agriculture', 'label' => 'LHP Harian', 'match' => ['lhp.getTable', 'lhp.getCreate', 'lhp.getUpdate', 'lhp.getDelete', 'lhp.getShow']],
                 ['route' => 'lhp-report.getTable', 'icon' => 'summarize', 'label' => 'Report LHP', 'match' => ['lhp-report.*']],
             ],
@@ -40,6 +42,8 @@ return [
             'label' => 'Monitoring',
             'items' => [
                 ['route' => 'masalah.getTable', 'icon' => 'report_problem', 'label' => 'Permasalahan', 'match' => ['masalah.*']],
+                ['route' => 'cuti.getTable', 'icon' => 'event_available', 'label' => 'Pengajuan Cuti', 'match' => ['cuti.*']],
+                ['route' => 'cuti-report.getTable', 'icon' => 'summarize', 'label' => 'Report Cuti', 'match' => ['cuti-report.*']],
             ],
         ],
         [
@@ -105,6 +109,7 @@ return [
             ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun'],
         ],
         'tanaman' => [
+            ['route' => 'dashboard-kebun', 'icon' => 'dashboard', 'label' => 'Dash'],
             ['route' => 'lhp.getTable', 'icon' => 'agriculture', 'label' => 'LHP'],
             ['route' => 'dashboard', 'icon' => 'home', 'label' => 'Home'],
             ['route' => 'lhp-report.getTable', 'icon' => 'summarize', 'label' => 'Report'],
@@ -120,9 +125,9 @@ return [
             ['route' => 'surat-template.getTable', 'icon' => 'description', 'label' => 'Template'],
         ],
         'distrik' => [
+            ['route' => 'dashboard-kebun', 'icon' => 'dashboard', 'label' => 'Dash'],
             ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun'],
             ['route' => 'lhp.getTable', 'icon' => 'agriculture', 'label' => 'LHP'],
-            ['route' => 'dashboard', 'icon' => 'home', 'label' => 'Home'],
             ['route' => 'masalah.getTable', 'icon' => 'report_problem', 'label' => 'Masalah'],
             ['route' => 'lhp-report.getTable', 'icon' => 'summarize', 'label' => 'Report'],
         ],

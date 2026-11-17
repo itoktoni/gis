@@ -75,19 +75,29 @@
                             $icon = $stepIcons[$code] ?? 'circle';
                             $no = VoucherStatusEnum::stepNo($code) ?? ($idx + 1);
                         @endphp
-                        <div class="relative flex @if(!$loop->last) pb-4 @endif">
-                            <div class="grow rounded-lg p-3 shadow-sm @if($active) bg-surface-container shadow-md @elseif($done) bg-surface-container-low @else bg-surface-container-lowest opacity-85 @endif flex flex-col gap-1">
-                                <div class="flex flex-wrap items-center justify-between gap-1">
-                                    <span class="text-[14px] font-semibold @if($done || $active) text-primary font-bold @endif">{{ $idx + 1 }}. {{ VoucherStatusEnum::getDescription($code) }}
-                                        @if($active)<span class="ml-1 rounded-full bg-secondary-container px-2 py-0.5 text-[10px] font-bold uppercase text-on-secondary-container">Aktif</span>@endif
-                                    </span>
-                                    <span class="flex items-center gap-1 text-[12px] text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">schedule</span>{{ $h?->created_at?->format('d M Y, H:i') ?? ($active ? 'Berjalan' : 'Menunggu') }}</span>
+                        <div class="relative flex gap-3 @if(!$loop->last) pb-4 @endif">
+                            {{-- Rel timeline --}}
+                            <div class="flex flex-col items-center">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm @if($done) bg-success text-white @elseif($active) bg-primary text-white ring-4 ring-primary/20 @else bg-surface-container-high text-on-surface-variant @endif">
+                                    <span class="material-symbols-outlined text-[20px]">@if($done) check @else {{ $icon }} @endif</span>
                                 </div>
-                                <p class="text-[12px]">Oleh: <strong class="@if($done || $active) text-primary @endif">{{ $h?->hasUser?->name ?? '—' }}</strong></p>
+                                @if(!$loop->last)
+                                <div class="w-0.5 flex-1 rounded-full @if($done) bg-success/60 @else bg-outline-variant @endif" style="min-height:24px"></div>
+                                @endif
+                            </div>
+                            <div class="grow rounded-xl border p-3 shadow-sm flex flex-col gap-1 @if($active) border-primary bg-primary/10 shadow-md @elseif($done) border-success/30 bg-success/10 @else border-dashed border-outline-variant bg-surface-container-low @endif">
+                                <div class="flex flex-wrap items-center justify-between gap-1">
+                                    <span class="text-[14px] font-semibold @if($done) text-success @elseif($active) text-primary font-bold @endif">{{ $idx + 1 }}. {{ VoucherStatusEnum::getDescription($code) }}
+                                        @if($active)<span class="ml-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase text-white">Aktif</span>@endif
+                                        @if($done)<span class="ml-1 rounded-full bg-success px-2 py-0.5 text-[10px] font-bold uppercase text-white">Selesai</span>@endif
+                                    </span>
+                                    <span class="flex items-center gap-1 text-[12px] @if($active) font-semibold text-primary @else text-on-surface-variant @endif"><span class="material-symbols-outlined text-[14px]">schedule</span>{{ $h?->created_at?->format('d M Y, H:i') ?? ($active ? 'Berjalan' : 'Menunggu') }}</span>
+                                </div>
+                                <p class="text-[12px]">Oleh: <strong class="@if($done) text-success @elseif($active) text-primary @endif">{{ $h?->hasUser?->name ?? '—' }}</strong></p>
                                 @if($h?->history_catatan)
-                                <div class="mt-1 flex items-center gap-1.5 rounded bg-surface-container-lowest px-2 py-1 text-[12px] text-on-surface-variant"><span class="material-symbols-outlined text-[16px] text-tertiary-container">verified</span><span>{{ $h->history_catatan }}</span></div>
+                                <div class="mt-1 flex items-center gap-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant/50 px-2 py-1 text-[12px] text-on-surface"><span class="material-symbols-outlined text-[16px] @if($done) text-success @else text-tertiary @endif">verified</span><span>{{ $h->history_catatan }}</span></div>
                                 @elseif($active)
-                                <div class="mt-1 rounded-lg bg-surface-container-lowest p-2 text-[12px] text-on-surface-variant">Menunggu aksi pada tahap ini.</div>
+                                <div class="mt-1 rounded-lg bg-surface-container-lowest border border-primary/30 p-2 text-[12px] text-on-surface-variant">Menunggu aksi pada tahap ini.</div>
                                 @endif
                                 @if($h?->history_file)
                                 <a href="{{ fileUrl($h->history_file) }}" target="_blank" class="mt-1 inline-flex w-fit items-center gap-1 text-[12px] font-semibold text-primary hover:underline"><span class="material-symbols-outlined text-[15px]">attach_file</span> Lampiran</a>

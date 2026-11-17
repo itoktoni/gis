@@ -13,6 +13,8 @@ class Kebun extends BaseModel
         'kebun_id_pt',
         'kebun_id_distrik',
         'kebun_luas_ha',
+        'kebun_target_produksi_kg',
+        'kebun_rkap_kg',
         'kebun_jumlah_pohon',
         'kebun_status',
         'kebun_kelola',
@@ -34,6 +36,8 @@ class Kebun extends BaseModel
         'kebun_id_pt',
         'kebun_id_distrik',
         'kebun_luas_ha',
+        'kebun_target_produksi_kg',
+        'kebun_rkap_kg',
         'kebun_jumlah_pohon',
         'kebun_status',
     ];
@@ -42,6 +46,8 @@ class Kebun extends BaseModel
     {
         return [
             'kebun_luas_ha' => 'float',
+            'kebun_target_produksi_kg' => 'float',
+            'kebun_rkap_kg' => 'float',
             'kebun_jumlah_pohon' => 'integer',
             'kebun_lat' => 'float',
             'kebun_lng' => 'float',
@@ -92,6 +98,8 @@ class Kebun extends BaseModel
             'kebun_kelola' => 'nullable|string|max:20',
             'kebun_kabupaten' => 'nullable|string|max:50',
             'kebun_luas_ha' => 'nullable|numeric|min:0',
+            'kebun_target_produksi_kg' => 'nullable|numeric|min:0',
+            'kebun_rkap_kg' => 'nullable|numeric|min:0',
             'kebun_jumlah_pohon' => 'nullable|integer|min:0',
             'kebun_status' => 'nullable|string|max:50',
             'kebun_lat' => 'nullable|numeric|between:-90,90',

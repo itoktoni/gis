@@ -11,14 +11,16 @@
                 <x-select col="3" name="kebun_id_pt" label="PT / Grup" :options="$ptOptions" class="search" />
                 <x-select col="3" name="kebun_id_distrik" label="Distrik" :options="$distrikOptions" class="search" />
                 <x-select col="6" name="kebun_status" label="Status" :options="$statusOptions" />
-                <x-input col="4" name="kebun_luas_ha" label="Luas (ha)" type="number" />
+                <x-input col="4" name="kebun_luas_ha" label="Luas TM Planted (Ha)" type="number" />
+                <x-input col="4" name="kebun_target_produksi_kg" label="Target Produksi (Kg)" type="number" />
+                <x-input col="4" name="kebun_rkap_kg" label="Produksi TBS RKAP (Kg)" type="number" />
                 <x-input col="4" name="kebun_jumlah_pohon" label="Jumlah Pohon" type="number" />
                 <x-input col="2" name="kebun_lat" label="Latitude" type="number" />
                 <x-input col="2" name="kebun_lng" label="Longitude" type="number" />
 
                 <div class="col-span-12">
                     <label class="text-sm font-medium">Marking Area Sawit — klik peta untuk tambah titik, geser titik untuk ubah bentuk</label>
-                    <div id="kebun-form-map" style="height: 380px;" class="rounded-xl border border-outline-variant mt-2"></div>
+                    <div id="kebun-form-map" style="height: 380px;" class="relative z-0 rounded-xl border border-outline-variant mt-2"></div>
                     <div class="flex flex-wrap gap-2 mt-2">
                         <button type="button" id="btn-mark-mode" class="btn">Mode tambah: ON</button>
                         <button type="button" id="btn-undo-point" class="btn">Hapus titik terakhir</button>

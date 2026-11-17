@@ -15,7 +15,7 @@
 
                 <div class="col-span-12">
                     <label class="text-sm font-medium">Tandai Lokasi — klik peta untuk menaruh pin objek</label>
-                    <div id="objek-form-map" style="height: 320px;" class="rounded-xl border border-outline-variant mt-2"></div>
+                    <div id="objek-form-map" style="height: 320px;" class="relative z-0 rounded-xl border border-outline-variant mt-2"></div>
                     <div id="wilayah-info" class="mt-2 text-xs rounded-xl bg-surface-container px-4 py-3">
                         Klik peta untuk melihat nama wilayah (jalan, kelurahan, kecamatan, kab/kota, provinsi).
                     </div>

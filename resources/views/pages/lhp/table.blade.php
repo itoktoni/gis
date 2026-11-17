@@ -42,14 +42,27 @@
             $currentSort = request('sort.0', '');
             $sortField = str_replace(':desc','',str_replace(':asc','',$currentSort));
             $sortDir = str_contains($currentSort, ':desc') ? 'desc' : 'asc';
+            // Label kolom mengikuti header file excel LHP
+            $lhpLabels = [
+                'lhp_tanggal' => 'Tanggal',
+                'lhp_id_kebun' => 'Nama Kebun',
+                'lhp_luas_panen' => 'Luas Panen (Ha)',
+                'lhp_tk_hk' => 'TK Panen (HK)',
+                'lhp_janjang_panen' => 'Janjang Panen (Jjg)',
+                'lhp_produksi_panen_kg' => 'Produksi Panen (Kg)',
+                'lhp_janjang_kirim' => 'Janjang Kirim (Jjg)',
+                'lhp_produksi_kirim_kg' => 'Produksi TBS Kirim (Kg)',
+                'lhp_brondolan_kg' => 'Brondolan (Kg)',
+            ];
         @endphp
 
         <x-table>
             <x-slot:head>
                 <x-table-checkbox :model="$model" onchange="toggleAll(this)" />
                 <th>Actions</th>
+                <th>Luas TM (Ha)</th>
                 @foreach ($model::$sortColumns as $column)
-                <x-table-sort field="{{ $column }}" label="{{ formatLabel($column) }}" :sortField="$sortField" :sortDir="$sortDir" />
+                <x-table-sort field="{{ $column }}" label="{{ $lhpLabels[$column] ?? formatLabel($column) }}" :sortField="$sortField" :sortDir="$sortDir" />
                 @endforeach
                 <th>BJR Panen</th>
             </x-slot:head>
@@ -59,6 +72,7 @@
                 <tr>
                     <x-table-row-checkbox :model="$model" :value="$table->field_primary" />
                     <x-table-action :model="$model" :id="$table->field_primary" />
+                    <td>{{ $table->hasKebun?->kebun_luas_ha ?? '-' }}</td>
                     @foreach ($model::$sortColumns as $column)
                     <td>@if($column === 'lhp_id_kebun'){{ $table->hasKebun?->kebun_nama ?? $table->$column }}@if($table->hasKebun?->hasPt)<span class="block text-[10px] text-on-surface-variant">{{ $table->hasKebun->hasPt->pt_nama }}</span>@endif@elseif(in_array($column, ['lhp_produksi_panen_kg','lhp_produksi_kirim_kg'])){{ number_format($table->$column, 0, ',', '.') }}@elseif($column === 'lhp_tanggal'){{ $table->$column?->format('d/m/Y') }}@else{{ $table->$column }}@endif</td>
                     @endforeach
@@ -108,6 +122,10 @@
         <x-pagination :paginator="$data" />
         <x-action :model="$model" :action="['create', 'delete']">
             @can('exportexcel', $model)
+            <a href="{{ route('lhp.getImport') }}" wire:navigate class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-all shrink-0">
+                <span class="material-symbols-outlined text-base md:text-xl">upload</span>
+                <span class="hidden sm:inline">Import</span>
+            </a>
             <a href="{{ route('lhp.getExportExcel', ['tanggal' => now()->toDateString()]) }}" class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0">
                 <span class="material-symbols-outlined text-base md:text-xl">table_view</span>
                 <span class="hidden sm:inline">Hari Ini</span>

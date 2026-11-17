@@ -17,13 +17,20 @@ class Lhp extends BaseModel
         'lhp_id_kebun',
         'lhp_tanggal',
         'lhp_hari',
-        'lhp_luas_tm',
         'lhp_luas_panen',
         'lhp_tk_hk',
         'lhp_janjang_panen',
         'lhp_produksi_panen_kg',
         'lhp_janjang_kirim',
         'lhp_produksi_kirim_kg',
+        'lhp_brondolan_kg',
+        'lhp_up_le10',
+        'lhp_up_11_15',
+        'lhp_up_gt15',
+        'lhp_hujan_pagi',
+        'lhp_hujan_siang',
+        'lhp_hujan_malam',
+        'lhp_blok_restan',
     ];
 
     public static $filterColumns = [
@@ -40,19 +47,26 @@ class Lhp extends BaseModel
         'lhp_produksi_panen_kg',
         'lhp_janjang_kirim',
         'lhp_produksi_kirim_kg',
+        'lhp_brondolan_kg',
     ];
 
     protected function casts(): array
     {
         return [
             'lhp_tanggal' => 'date',
-            'lhp_luas_tm' => 'float',
             'lhp_luas_panen' => 'float',
             'lhp_tk_hk' => 'float',
             'lhp_janjang_panen' => 'integer',
             'lhp_produksi_panen_kg' => 'float',
             'lhp_janjang_kirim' => 'integer',
             'lhp_produksi_kirim_kg' => 'float',
+            'lhp_brondolan_kg' => 'float',
+            'lhp_up_le10' => 'float',
+            'lhp_up_11_15' => 'float',
+            'lhp_up_gt15' => 'float',
+            'lhp_hujan_pagi' => 'float',
+            'lhp_hujan_siang' => 'float',
+            'lhp_hujan_malam' => 'float',
         ];
     }
 
@@ -80,13 +94,20 @@ class Lhp extends BaseModel
                     ->ignore($ignoreId, 'lhp_id'),
             ],
             'lhp_hari' => 'nullable|string|max:15',
-            'lhp_luas_tm' => 'nullable|numeric|min:0',
             'lhp_luas_panen' => 'nullable|numeric|min:0',
             'lhp_tk_hk' => 'nullable|numeric|min:0',
             'lhp_janjang_panen' => 'nullable|integer|min:0',
             'lhp_produksi_panen_kg' => 'nullable|numeric|min:0',
             'lhp_janjang_kirim' => 'nullable|integer|min:0',
             'lhp_produksi_kirim_kg' => 'nullable|numeric|min:0',
+            'lhp_brondolan_kg' => 'nullable|numeric|min:0',
+            'lhp_up_le10' => 'nullable|numeric|min:0',
+            'lhp_up_11_15' => 'nullable|numeric|min:0',
+            'lhp_up_gt15' => 'nullable|numeric|min:0',
+            'lhp_hujan_pagi' => 'nullable|numeric|min:0',
+            'lhp_hujan_siang' => 'nullable|numeric|min:0',
+            'lhp_hujan_malam' => 'nullable|numeric|min:0',
+            'lhp_blok_restan' => 'nullable|string|max:255',
         ];
     }
 

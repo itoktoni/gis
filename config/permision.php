@@ -18,6 +18,7 @@ $denyActions = [
     'prepare', 'prepareSo', 'storeship',
     'status', 'pay', 'import', 'exportexcel', 'print',
     'exportpdf', 'exportdocx', 'generate', 'chat', 'download',
+    'approve', 'sisa', 'report', 'downloaddocx',
 ];
 
 // Semua prefix modul yang ada di routes/web.php.
@@ -32,6 +33,8 @@ $allModules = [
     'voucher',
     'voucher-status',
     'masalah',
+    'cuti',
+    'cuti-report',
     'lhp',
     'lhp-report',
     'objek',

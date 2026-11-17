@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\LhpImportAction;
 use App\Concerns\ControllerTrait;
 use App\Http\Requests\GeneralRequest;
-use App\Models\Kebun;
 use App\Models\Lhp;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
@@ -60,6 +60,20 @@ class LhpController extends Controller
         return $this->traitPostUpdate($request, $id);
     }
 
+    public function getImport(GeneralRequest $request)
+    {
+        return $this->views($this->template('import'), []);
+    }
+
+    public function postImport(GeneralRequest $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,csv|max:20480']);
+
+        $summary = LhpImportAction::run($request->file('file')->getRealPath())['data'];
+
+        return $this->views($this->template('import'), ['summary' => $summary]);
+    }
+
     public function getExportExcel(GeneralRequest $request)
     {
         $tanggal = $request->input('tanggal');
@@ -84,18 +98,12 @@ class LhpController extends Controller
 
     private function mergeDefaults(GeneralRequest $request): void
     {
+        // Hari dihitung otomatis dari tanggal (data turunan transaksi, bukan master)
         if ($request->filled('lhp_tanggal')) {
             try {
                 $hari = Carbon::parse($request->input('lhp_tanggal'))->locale('id')->isoFormat('dddd');
                 $request->merge(['lhp_hari' => $hari]);
             } catch (\Throwable) {
-            }
-        }
-
-        if (! $request->filled('lhp_luas_tm') && $request->filled('lhp_id_kebun')) {
-            $kebun = Kebun::find($request->input('lhp_id_kebun'));
-            if ($kebun && $kebun->kebun_luas_ha) {
-                $request->merge(['lhp_luas_tm' => $kebun->kebun_luas_ha]);
             }
         }
     }
