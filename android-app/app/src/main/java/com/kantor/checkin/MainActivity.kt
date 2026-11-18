@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
         tvInfo = findViewById(R.id.tvInfo)
 
         findViewById<Button>(R.id.btnLogin).setOnClickListener { doLogin() }
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener {
+            refreshSessionUI()
+            findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
+        }
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardCheckin).setOnClickListener {
             startActivity(Intent(this, CheckinActivity::class.java))
         }

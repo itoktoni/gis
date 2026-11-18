@@ -61,6 +61,9 @@ data class VisitPointsRes(val date: String, val data: List<VisitPoint>)
 data class ReminderConfig(
     val enabled: Boolean = true,
     val times: List<String> = emptyList(),
+    val interval_hours: Double = 3.0,
+    val start: String = "06:00",
+    val end: String = "17:00",
     val title: String = "",
     val message: String = ""
 )

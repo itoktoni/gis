@@ -74,18 +74,25 @@ class AbsensiController extends Controller
         $times = [];
 
         if ($enabled) {
-            $start = (int) substr((string) ($cfg['start'] ?? '06:00'), 0, 2);
-            $end = (int) substr((string) ($cfg['end'] ?? '17:00'), 0, 2);
-            $interval = max(1, (int) ($cfg['interval_hours'] ?? 3));
-            $max = max(1, (int) ($cfg['max_per_day'] ?? 3));
-            for ($h = $start, $n = 0; $h <= $end && $n < $max; $h += $interval, $n++) {
-                $times[] = sprintf('%02d:00', $h);
+            $toMin = function ($hm) {
+                $p = explode(':', (string) $hm);
+                return ((int) ($p[0] ?? 0)) * 60 + ((int) ($p[1] ?? 0));
+            };
+            $startMin = $toMin($cfg['start'] ?? '06:00');
+            $endMin = $toMin($cfg['end'] ?? '17:00');
+            $intervalMin = max(1, (int) round(((float) ($cfg['interval_hours'] ?? 3)) * 60));
+            $max = max(1, min(48, (int) ($cfg['max_per_day'] ?? 3)));
+            for ($m = $startMin, $n = 0; $m <= $endMin && $n < $max; $m += $intervalMin, $n++) {
+                $times[] = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
             }
         }
 
         return response()->json([
             'enabled' => $enabled,
             'times' => $times,
+            'interval_hours' => (float) ($cfg['interval_hours'] ?? 3),
+            'start' => $cfg['start'] ?? '06:00',
+            'end' => $cfg['end'] ?? '17:00',
             'title' => $cfg['title'] ?? 'Waktunya Check-In',
             'message' => $cfg['message'] ?? 'Jangan lupa check-in kehadiran hari ini.',
         ]);
@@ -100,7 +107,10 @@ class AbsensiController extends Controller
         $allowed = $request->user()->allowedKebunIds();
         $rows = Kunjungan::with(['hasObjek', 'hasKebun'])
             ->where('kunjungan_id_user', $request->user()->id)
-            ->whereDate('kunjungan_tanggal', $date)
+            ->where(function ($q) use ($date) {
+                // Tanpa tanggal = berlaku selamanya, selalu ikut
+                $q->whereDate('kunjungan_tanggal', $date)->orWhereNull('kunjungan_tanggal');
+            })
             ->when($allowed !== null, fn ($q) => $q->where(function ($w) use ($allowed) {
                 $w->whereNull('kunjungan_id_kebun')->orWhereIn('kunjungan_id_kebun', $allowed);
             }))
@@ -114,7 +124,7 @@ class AbsensiController extends Controller
                 'status' => $k->kunjungan_status,
                 'objek' => $k->hasObjek?->objek_nama,
                 'kebun' => $k->hasKebun?->kebun_nama,
-                'date' => $k->kunjungan_tanggal->format('Y-m-d'),
+                'date' => $k->kunjungan_tanggal?->format('Y-m-d'),
             ]);
 
         return response()->json(['date' => $date, 'data' => $rows]);

@@ -52,7 +52,7 @@ class Kunjungan extends BaseModel
     {
         return [
             'kunjungan_id_user' => 'required|exists:users,id',
-            'kunjungan_tanggal' => 'required|date',
+            'kunjungan_tanggal' => 'nullable|date',
             'kunjungan_nama' => 'required|string|max:255',
             'kunjungan_lat' => 'required|numeric|between:-90,90',
             'kunjungan_lng' => 'required|numeric|between:-180,180',

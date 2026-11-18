@@ -123,6 +123,13 @@ class CheckinActivity : AppCompatActivity() {
         }
         findViewById<android.widget.ImageButton>(R.id.btnLoc).setOnClickListener { doRelocate() }
         findViewById<Button>(R.id.btnCapture).setOnClickListener { doCaptureAndSend() }
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener {
+            updateStamp()
+            val lt = lightThreat()
+            refreshCaptureButton(lt)
+            if (!isPrivileged()) showWarn(lt?.let { "$it.\nCheck-in dikunci sampai mock dimatikan." })
+            findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
+        }
         // Label titik kunjungan bila dibuka dari daftar titik
         intent.getStringExtra("kunjungan_name")?.takeIf { it.isNotEmpty() }?.let {
             tvStatus.text = "📍 Titik: $it"

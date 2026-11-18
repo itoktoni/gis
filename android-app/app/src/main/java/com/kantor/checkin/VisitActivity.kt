@@ -44,6 +44,7 @@ class VisitActivity : AppCompatActivity() {
         BottomNav.wire(this, BottomNav.VISIT)
         listBox = findViewById(R.id.listBox)
         tvInfo = findViewById(R.id.tvInfo)
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener { load() }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
         } else load()
@@ -110,6 +111,7 @@ class VisitActivity : AppCompatActivity() {
             val inRange = d != null && d <= p.radius_m
             listBox.addView(visitCard(p, d, inRange))
         }
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()

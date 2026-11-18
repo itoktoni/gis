@@ -16,6 +16,32 @@ import java.util.Calendar
  */
 object ReminderScheduler {
     private const val PREF_TIMES = "reminder_times"
+    const val PREF_INTERVAL = "reminder_interval_override"
+
+    /** Interval efektif: override HP bila valid, else server. */
+    fun effectiveInterval(p: android.content.SharedPreferences, server: Double): Double {
+        val ov = p.getString(PREF_INTERVAL, "")?.replace(',', '.')?.toDoubleOrNull()
+        return if (ov != null && ov > 0 && ov <= 24) ov else server
+    }
+
+    /** Hitung jam bunyi: start + tiap interval, maks 48, tidak lewat end. */
+    fun computeTimes(start: String, end: String, intervalHours: Double, max: Int): List<String> {
+        fun toMin(hm: String): Int {
+            val p = hm.split(":")
+            return (p.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (p.getOrNull(1)?.toIntOrNull() ?: 0)
+        }
+        val step = maxOf(1, (intervalHours * 60).toInt())
+        val out = mutableListOf<String>()
+        var m = toMin(start)
+        val endMin = toMin(end)
+        var n = 0
+        val cap = maxOf(1, minOf(max, 48))
+        while (m <= endMin && n < cap) {
+            out.add("%02d:%02d".format(m / 60, m % 60))
+            m += step; n++
+        }
+        return out
+    }
 
     fun refresh(ctx: Context) {
         val app = ctx.applicationContext
@@ -31,12 +57,16 @@ object ReminderScheduler {
                     .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
                     .build().create(ApiService::class.java)
                 val cfg = api.reminderConfig("Bearer $token")
-                p.edit().putString(PREF_TIMES, cfg.times.joinToString(",")).apply()
-                schedule(app, cfg)
+                val iv = effectiveInterval(p, cfg.interval_hours)
+                val times = if (kotlin.math.abs(iv - cfg.interval_hours) < 1e-9) cfg.times
+                else computeTimes(cfg.start, cfg.end, iv, 48)
+                val eff = cfg.copy(times = times)
+                p.edit().putString(PREF_TIMES, times.joinToString(",")).apply()
+                schedule(app, eff)
             } catch (_: Exception) {
                 // Offline: pakai jadwal tersimpan terakhir
                 val saved = (p.getString(PREF_TIMES, "") ?: "").split(",").filter { it.matches(Regex("\\d{2}:\\d{2}")) }
-                if (saved.isNotEmpty()) schedule(app, ReminderConfig(true, saved, "Waktunya Check-In", "Jangan lupa check-in kehadiran hari ini."))
+                if (saved.isNotEmpty()) schedule(app, ReminderConfig(enabled = true, times = saved, title = "Waktunya Check-In", message = "Jangan lupa check-in kehadiran hari ini."))
             }
         }
     }
@@ -44,10 +74,10 @@ object ReminderScheduler {
     fun schedule(ctx: Context, cfg: ReminderConfig) {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         // Hapus jadwal lama dulu
-        for (i in 0 until 8) am.cancel(pending(ctx, i, null, null))
+        for (i in 0 until 48) am.cancel(pending(ctx, i, null, null))
         if (!cfg.enabled || cfg.times.isEmpty()) return
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        cfg.times.take(8).forEachIndexed { i, hm ->
+        cfg.times.take(48).forEachIndexed { i, hm ->
             val (h, m) = hm.split(":").map { it.toIntOrNull() ?: 0 }
             val cal = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)

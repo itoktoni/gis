@@ -27,6 +27,10 @@ class PendingActivity : AppCompatActivity() {
         tvCount = findViewById(R.id.tvPendingCount)
         btnSync = findViewById(R.id.btnSyncNow)
         btnSync.setOnClickListener { doSync() }
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener {
+            render()
+            findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
+        }
     }
 
     override fun onResume() {

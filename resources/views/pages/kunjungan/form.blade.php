@@ -8,7 +8,7 @@
             @bind($model ?? null)
 
                 <x-select col="6" name="kunjungan_id_user" label="User" :options="$userOptions" />
-                <x-input col="6" name="kunjungan_tanggal" label="Tanggal & Jam" type="datetime-local" />
+                <x-input col="6" name="kunjungan_tanggal" label="Tanggal & Jam (kosongkan = selamanya)" type="datetime-local" />
                 <x-input col="12" name="kunjungan_nama" label="Nama Titik" />
                 <x-select col="6" name="kunjungan_id_kebun" label="Kebun" :options="$kebunOptions" />
                 <x-select col="6" name="kunjungan_id_objek" label="Objek / POS" :options="$objekOptions" />

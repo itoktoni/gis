@@ -24,6 +24,7 @@ return [
         'enabled' => env('REMINDER_ENABLED', true),
         'start' => env('REMINDER_START', '06:00'),   // jam mulai (WIB)
         'end' => env('REMINDER_END', '17:00'),        // jam selesai (WIB)
+        // Interval jam, boleh desimal (contoh: 3, 1, 0.5 = 30 mnt, 0.2 = 12 mnt)
         'interval_hours' => env('REMINDER_INTERVAL_HOURS', 3),
         'max_per_day' => env('REMINDER_MAX_PER_DAY', 3),
         'title' => env('REMINDER_TITLE', 'Waktunya Check-In'),

@@ -5,10 +5,13 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/apn_bg">
 
-    <!-- Konten -->
-    <ScrollView
+    <!-- Konten (pull-to-refresh) -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout android:id="@+id/swipe"
         android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_weight="1">
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="match_parent"
         android:fillViewport="true">
 
         <LinearLayout
@@ -211,7 +214,6 @@
 
                 <com.google.android.material.card.MaterialCardView android:id="@+id/cardCheckin"
                     android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_columnSpan="2" android:layout_gravity="fill_horizontal"
                     android:layout_columnWeight="1"
                     android:layout_margin="6dp"
                     android:clickable="true" android:focusable="true"
@@ -324,6 +326,7 @@
                 android:layout_marginTop="12dp" />
         </LinearLayout>
     </ScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <include layout="@layout/bottom_bar" />
 </LinearLayout>

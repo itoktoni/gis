@@ -64,6 +64,7 @@ class ReportActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnFilter).setOnClickListener { load() }
+        findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener { load() }
         findViewById<Button>(R.id.btnToday).setOnClickListener { setPresetToday(); load() }
         findViewById<Button>(R.id.btnWeek).setOnClickListener { setPresetWeek(); load() }
         findViewById<Button>(R.id.btnMonth).setOnClickListener { setPresetMonth(); load() }
@@ -109,6 +110,7 @@ class ReportActivity : AppCompatActivity() {
                 if (e.code() == 401) { toast("Sesi berakhir, login ulang"); finish() }
                 else toast("Gagal memuat: HTTP ${e.code()}")
             } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal memuat: ${e.message}") }
+            finally { findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false }
         }
     }
 

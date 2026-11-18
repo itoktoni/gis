@@ -3,9 +3,12 @@
     android:orientation="vertical"
     android:layout_width="match_parent" android:layout_height="match_parent">
 
-    <ScrollView
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout android:id="@+id/swipe"
         android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_weight="1">
+
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="match_parent"
         android:fillViewport="true">
     <LinearLayout android:orientation="vertical" android:padding="16dp"
         android:layout_width="match_parent" android:layout_height="wrap_content">
@@ -16,6 +19,7 @@
             android:layout_marginTop="8dp" />
     </LinearLayout>
     </ScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <include layout="@layout/bottom_bar" />
 
