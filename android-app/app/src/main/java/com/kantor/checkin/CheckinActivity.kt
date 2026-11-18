@@ -395,10 +395,14 @@ class CheckinActivity : AppCompatActivity() {
                         refreshCaptureButton(it); tvStatus.text = ""; return@launch
                     }
                 }
-                // Sampling sensor jalan paralel dengan foto/lokasi (3 detik)
+                val online = isOnline()
+                // Sampling sensor + lookup IP paralel dengan foto/lokasi (hemat ~4-8 detik)
                 val motionDeferred = lifecycleScope.async(kotlinx.coroutines.Dispatchers.Default) { sampleMotion() }
+                val ipDeferred = lifecycleScope.async(kotlinx.coroutines.Dispatchers.IO) { fetchIpGeo(online) }
                 tvStatus.text = "Memotret..."
-                val photo = takePhoto()
+                val rawPhoto = takePhoto()
+                tvStatus.text = "Menyiapkan foto..."
+                val photo = downscaleIfNeeded(rawPhoto)
                 tvStatus.text = "Mengambil lokasi..."
                 val loc = currentLocation() ?: lastLoc
                     ?: run { toast("GPS null, nyalakan lokasi"); tvStatus.text = ""; return@launch }
@@ -416,7 +420,6 @@ class CheckinActivity : AppCompatActivity() {
 
                 tvStatus.text = "Mengirim..."
                 val ts = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date())
-                val online = isOnline()
                 @Suppress("DEPRECATION")
                 val mock = loc.isMock
                 // Lokasi independen: NETWORK_PROVIDER (menara/WiFi), umumnya tak ikut dipalsukan
@@ -424,36 +427,9 @@ class CheckinActivity : AppCompatActivity() {
                     (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
                         .getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 } catch (_: Exception) { null }
-                // Sumber paling independen: geolokasi IP publik (di-resolve di luar HP).
-                // WAJIB di thread IO; dilewati bila offline (dipakai dari pending saat sync).
-                val ipResult = if (online) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    try {
-                        val c = java.net.URL("http://ip-api.com/json/?fields=status,message,query,lat,lon,city,country").openConnection() as java.net.HttpURLConnection
-                        c.connectTimeout = 4000; c.readTimeout = 4000
-                        val jo = JSONObject(c.inputStream.bufferedReader().readText())
-                        if (jo.optString("status") == "success") {
-                            return@withContext Triple(
-                                Triple(jo.optString("query", null),
-                                    jo.optDouble("lat", Double.NaN).takeIf { !it.isNaN() },
-                                    jo.optDouble("lon", Double.NaN).takeIf { !it.isNaN() }),
-                                (jo.optString("city", "") + ", " + jo.optString("country", "")).trim().trim(','), null)
-                        } else return@withContext Triple(Triple(null, null, null), null, "ip-api: " + jo.optString("message", "?"))
-                    } catch (e: Exception) { /* jatuh ke fallback */ }
-                    try {
-                        val c = java.net.URL("https://ipwho.is/?fields=success,message,ip,latitude,longitude,city,country").openConnection() as java.net.HttpURLConnection
-                        c.connectTimeout = 4000; c.readTimeout = 4000
-                        val jo = JSONObject(c.inputStream.bufferedReader().readText())
-                        if (jo.optBoolean("success", false)) {
-                            return@withContext Triple(
-                                Triple(jo.optString("ip", null),
-                                    jo.optDouble("latitude", Double.NaN).takeIf { !it.isNaN() },
-                                    jo.optDouble("longitude", Double.NaN).takeIf { !it.isNaN() }),
-                                (jo.optString("city", "") + ", " + jo.optString("country", "")).trim().trim(','), null)
-                        } else return@withContext Triple(Triple(null, null, null), null, "ipwho: " + jo.optString("message", "?"))
-                    } catch (e: Exception) {
-                        return@withContext Triple(Triple(null, null, null), null, "net: " + (e.message ?: e.toString()))
-                    }
-                } else Triple(Triple(null, null, null), null, "offline")
+                // Geolokasi IP diambil paralel di awal (ipDeferred); tinggal tunggu hasilnya
+                val ipResult = try { ipDeferred.await() }
+                catch (_: Exception) { Triple(Triple(null, null, null), null, "cancelled") }
                 var ipPub: String? = ipResult.first.first
                 var ipLat: Double? = ipResult.first.second
                 var ipLng: Double? = ipResult.first.third
@@ -610,11 +586,60 @@ class CheckinActivity : AppCompatActivity() {
                     // Ambang longgar: hanya flag bila sangat diam tapi GPS berpindah jauh
                     val still = variance < 0.15 && gyroMax < 0.3
                     if (!c.isCompleted) c.resume(Triple(still, variance, gyroMax))
-                }, 3000)
+                }, 2000)
             } catch (e: Exception) {
                 if (!c.isCompleted) c.resume(Triple(true, 0.0, 0.0))
             }
         }
+
+    /** Geolokasi IP publik (best-effort, timeout pendek). Dijalankan paralel via async. */
+    private fun fetchIpGeo(online: Boolean): Triple<Triple<String?, Double?, Double?>, String?, String?> {
+        if (!online) return Triple(Triple(null, null, null), null, "offline")
+        try {
+            val c = java.net.URL("http://ip-api.com/json/?fields=status,message,query,lat,lon,city,country").openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 2500; c.readTimeout = 2500
+            val jo = JSONObject(c.inputStream.bufferedReader().readText())
+            if (jo.optString("status") == "success") {
+                return Triple(
+                    Triple(jo.optString("query", null),
+                        jo.optDouble("lat", Double.NaN).takeIf { !it.isNaN() },
+                        jo.optDouble("lon", Double.NaN).takeIf { !it.isNaN() }),
+                    (jo.optString("city", "") + ", " + jo.optString("country", "")).trim().trim(','), null)
+            }
+        } catch (_: Exception) { }
+        try {
+            val c = java.net.URL("https://ipwho.is/?fields=success,message,ip,latitude,longitude,city,country").openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 2500; c.readTimeout = 2500
+            val jo = JSONObject(c.inputStream.bufferedReader().readText())
+            if (jo.optBoolean("success", false)) {
+                return Triple(
+                    Triple(jo.optString("ip", null),
+                        jo.optDouble("latitude", Double.NaN).takeIf { !it.isNaN() },
+                        jo.optDouble("longitude", Double.NaN).takeIf { !it.isNaN() }),
+                    (jo.optString("city", "") + ", " + jo.optString("country", "")).trim().trim(','), null)
+            }
+            return Triple(Triple(null, null, null), null, "ipwho: " + jo.optString("message", "?"))
+        } catch (e: Exception) {
+            return Triple(Triple(null, null, null), null, "net: " + (e.message ?: e.toString()))
+        }
+    }
+
+    /** Kecilkan foto bila sisi terpanjang > 1600px agar upload jauh lebih cepat. */
+    private fun downscaleIfNeeded(f: File, maxDim: Int = 1600): File {
+        try {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(f.absolutePath, bounds)
+            if (bounds.outWidth <= 0 || maxOf(bounds.outWidth, bounds.outHeight) <= maxDim) return f
+            var sample = 1
+            while (bounds.outWidth / sample > maxDim || bounds.outHeight / sample > maxDim) sample *= 2
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = android.graphics.BitmapFactory.decodeFile(f.absolutePath, opts) ?: return f
+            val out = File(cacheDir, "send_${System.currentTimeMillis()}.jpg")
+            java.io.FileOutputStream(out).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }
+            bmp.recycle()
+            return out
+        } catch (_: Exception) { return f }
+    }
 
     private suspend fun takePhoto() = suspendCancellableCoroutine<File> { c ->
         val f = File(cacheDir, "selfie_${System.currentTimeMillis()}.jpg")
