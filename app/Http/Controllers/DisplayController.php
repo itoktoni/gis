@@ -93,7 +93,7 @@ class DisplayController extends Controller
             ->get();
 
         return view('display', compact(
-            'today', 'monthStart', 'kirimHariIni', 'panenHariIni',
+            'today', 'monthStart', 'kirimHariIni', 'panenHariIni', 'capaian',
             'kebunLapor', 'board', 'maxBoardKg', 'kebunBoard', 'maxKebunKg', 'topKebun',
             'distrikOptions', 'kebunOptions', 'distrikId', 'kebunId'
         ))->with('totalKebun', $kebunIds->count())
