@@ -54,6 +54,7 @@ class CheckinActivity : AppCompatActivity() {
     private lateinit var tvStamp: TextView
     private lateinit var tvStatus: TextView
     private lateinit var tvWarn: TextView
+    private lateinit var btnDevSettings: Button
     private var imageCapture: ImageCapture? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var lastLoc: android.location.Location? = null
@@ -92,10 +93,16 @@ class CheckinActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (token().isEmpty() || userId() == 0) { finish(); return } // wajib login dulu
         setContentView(R.layout.activity_checkin)
+        BottomNav.wire(this, BottomNav.CHECKIN)
         preview = findViewById(R.id.preview)
         tvStamp = findViewById(R.id.tvStamp)
         tvStatus = findViewById(R.id.tvStatus)
         tvWarn = findViewById(R.id.tvWarn)
+        btnDevSettings = findViewById(R.id.btnDevSettings)
+        btnDevSettings.setOnClickListener {
+            try { startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)) }
+            catch (_: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+        }
 
         ActivityCompat.requestPermissions(
             this,
@@ -109,12 +116,12 @@ class CheckinActivity : AppCompatActivity() {
         }
         stampHandler.post(stampTick)
 
-        findViewById<Button>(R.id.btnFlip).setOnClickListener {
+        findViewById<android.widget.ImageButton>(R.id.btnFlip).setOnClickListener {
             lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
                 CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
             startCameraSafe()
         }
-        findViewById<Button>(R.id.btnLoc).setOnClickListener { doRelocate() }
+        findViewById<android.widget.ImageButton>(R.id.btnLoc).setOnClickListener { doRelocate() }
         findViewById<Button>(R.id.btnCapture).setOnClickListener { doCaptureAndSend() }
         // Label titik kunjungan bila dibuka dari daftar titik
         intent.getStringExtra("kunjungan_name")?.takeIf { it.isNotEmpty() }?.let {
@@ -141,6 +148,7 @@ class CheckinActivity : AppCompatActivity() {
             refreshCaptureButton(null)
             showWarn(threat?.let { "Mode admin: $it (tetap boleh kirim, tercatat PALSU)" })
         }
+        btnDevSettings.visibility = if (devOn) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     override fun onPause() {
@@ -263,6 +271,11 @@ class CheckinActivity : AppCompatActivity() {
         val lt = lightThreat()
         refreshCaptureButton(lt)
         if (!isPrivileged()) showWarn(lt?.let { "$it.\nCheck-in dikunci sampai mock dimatikan." })
+        if (btnDevSettings.visibility != android.view.View.VISIBLE && isDevModeOn()) {
+            btnDevSettings.visibility = android.view.View.VISIBLE
+        } else if (btnDevSettings.visibility == android.view.View.VISIBLE && !isDevModeOn()) {
+            btnDevSettings.visibility = android.view.View.GONE
+        }
     }
 
     /** Status kunci tombol capture terakhir, agar toast hanya sekali saat transisi. */
@@ -366,7 +379,7 @@ class CheckinActivity : AppCompatActivity() {
                 updateStamp()
                 val acc = if (fresh.hasAccuracy()) "±%.0f m".format(fresh.accuracy) else "?"
                 toast("Lokasi diperbarui $acc")
-            } catch (e: Exception) { toast("Relokasi gagal: ${e.message}"); updateStamp() }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Relokasi gagal: ${e.message}"); updateStamp() }
         }
     }
 
@@ -520,7 +533,7 @@ class CheckinActivity : AppCompatActivity() {
                         .remove("user_id").remove("user_email").apply()
                     toast("Sesi berakhir, login ulang"); finish()
                 } else { toast("Gagal: ${e.message}"); tvStatus.text = "" }
-            } catch (e: Exception) { toast("Gagal: ${e.message}"); tvStatus.text = "" }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal: ${e.message}"); tvStatus.text = "" }
         }
     }
 

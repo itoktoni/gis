@@ -118,9 +118,9 @@
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
                         android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📷" android:textSize="36sp"
+                        <TextView android:text="📷" android:textSize="48sp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Check-In" android:textSize="15sp" android:textStyle="bold"
+                        <TextView android:text="Check-In" android:textSize="17sp" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Foto + kirim kehadiran" android:textSize="11sp"
@@ -139,33 +139,12 @@
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
                         android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📍" android:textSize="36sp"
+                        <TextView android:text="📍" android:textSize="48sp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Titik Kunjungan" android:textSize="15sp" android:textStyle="bold"
+                        <TextView android:text="Titik Kunjungan" android:textSize="17sp" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Peta + rute kebun" android:textSize="11sp"
-                            android:textColor="@color/apn_text_muted"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView android:id="@+id/cardReport"
-                    android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_margin="6dp"
-                    android:clickable="true" android:focusable="true"
-                    android:foreground="?attr/selectableItemBackground"
-                    style="@style/APN.Card" app:cardElevation="2dp"
-                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
-                    <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📋" android:textSize="36sp"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Laporan" android:textSize="15sp" android:textStyle="bold"
-                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
-                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Riwayat check-in" android:textSize="11sp"
                             android:textColor="@color/apn_text_muted"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
@@ -182,12 +161,33 @@
                     android:visibility="gone">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
                         android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="🔄" android:textSize="36sp"
+                        <TextView android:text="🔄" android:textSize="48sp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvSyncLabel" android:text="Sync" android:textSize="15sp" android:textStyle="bold"
+                        <TextView android:id="@+id/tvSyncLabel" android:text="Sync" android:textSize="17sp" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Kirim antrean offline" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardReport"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📋" android:textSize="48sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Laporan" android:textSize="17sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Riwayat check-in" android:textSize="11sp"
                             android:textColor="@color/apn_text_muted"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>
@@ -203,9 +203,9 @@
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
                         android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="⚙️" android:textSize="36sp"
+                        <TextView android:text="⚙️" android:textSize="48sp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Server" android:textSize="15sp" android:textStyle="bold"
+                        <TextView android:text="Server" android:textSize="17sp" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Atur alamat server" android:textSize="11sp"
@@ -224,9 +224,9 @@
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
                         android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="🚪" android:textSize="36sp"
+                        <TextView android:text="🚪" android:textSize="48sp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Logout" android:textSize="15sp" android:textStyle="bold"
+                        <TextView android:text="Logout" android:textSize="17sp" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Keluar akun" android:textSize="11sp"
@@ -244,23 +244,5 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Bottom menu: Home • Kunjungan • [Check-In besar tengah] • Laporan • Setting -->
-    <androidx.coordinatorlayout.widget.CoordinatorLayout android:id="@+id/bottomNav"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:visibility="gone">
-
-        <com.google.android.material.bottomappbar.BottomAppBar android:id="@+id/bottomBar"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            app:menu="@menu/bottom_bar" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton android:id="@+id/fabCheckin"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:contentDescription="Check-In"
-            android:src="@android:drawable/ic_menu_camera"
-            app:layout_anchor="@id/bottomBar"
-            app:layout_anchorGravity="center"
-            app:fabCustomSize="72dp"
-            app:maxImageSize="36dp" />
-    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+    <include layout="@layout/bottom_bar" />
 </LinearLayout>

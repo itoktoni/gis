@@ -27,6 +27,8 @@
         <activity android:name=".CheckinActivity" android:exported="false" />
         <activity android:name=".ReportActivity" android:exported="false" />
         <activity android:name=".VisitActivity" android:exported="false" />
+        <activity android:name=".SettingActivity" android:exported="false" />
+        <activity android:name=".PendingActivity" android:exported="false" />
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>

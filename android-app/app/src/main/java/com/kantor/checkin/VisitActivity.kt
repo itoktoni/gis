@@ -41,6 +41,7 @@ class VisitActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Configuration.getInstance().load(this, getSharedPreferences("osm", MODE_PRIVATE))
         setContentView(R.layout.activity_visit)
+        BottomNav.wire(this, BottomNav.VISIT)
         listBox = findViewById(R.id.listBox)
         tvInfo = findViewById(R.id.tvInfo)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -71,7 +72,7 @@ class VisitActivity : AppCompatActivity() {
                 val res = api.visitPoints("Bearer ${token()}", null)
                 tvInfo.text = "Titik hari ini (${res.date}): ${res.data.size}"
                 render(res.data)
-            } catch (e: Exception) { toast("Gagal muat titik: ${e.message}") }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal muat titik: ${e.message}") }
         }
     }
 
@@ -240,7 +241,7 @@ class VisitActivity : AppCompatActivity() {
                 myLoc = loc
                 addMeMarker(mv, loc)
                 mv.controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
-            } catch (e: Exception) { toast("Gagal dapat lokasi: ${e.message}") }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal dapat lokasi: ${e.message}") }
         }
     }
 

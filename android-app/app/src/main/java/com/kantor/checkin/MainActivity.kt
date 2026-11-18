@@ -49,56 +49,6 @@ class MainActivity : AppCompatActivity() {
             .create(ApiService::class.java)
     }
 
-    /** Dialog Setting URL server + tombol Tes koneksi. */
-    private fun showServerDialog() {
-        val p = getSharedPreferences("cfg", MODE_PRIVATE)
-        val input = EditText(this).apply {
-            setText(serverUrl())
-            hint = "http://192.168.1.x:8080/"
-            setSingleLine()
-        }
-        val layout = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 24, 48, 0)
-            addView(input)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Server URL")
-            .setMessage("Alamat server Laravel (satu WiFi dengan HP).")
-            .setView(layout)
-            .setPositiveButton("Simpan") { _, _ ->
-                var u = input.text.toString().trim().trimEnd('/')
-                if (!u.startsWith("http")) u = "http://$u"
-                p.edit()
-                    .putString("base_url", "$u/")
-                    .remove("test_mode")
-                    .apply()
-                doLogout(silent = true)
-                toast("Server: $u/ — silakan login ulang")
-            }
-            .setNeutralButton("Tes") { _, _ ->
-                lifecycleScope.launch {
-                    try {
-                        val ok = withContextTest(input.text.toString())
-                        toast(if (ok) "Server terjangkau" else "Tidak terjangkau")
-                    } catch (e: Exception) { toast("Tidak terjangkau: ${e.message}") }
-                }
-            }
-            .setNegativeButton("Batal", null)
-            .show()
-    }
-
-    /** Ping ringan: GET /api/signatures/stats, 401 = server hidup. */
-    private suspend fun withContextTest(raw: String): Boolean {
-        var u = raw.trim().trimEnd('/')
-        if (!u.startsWith("http")) u = "http://$u"
-        return try {
-            val c = java.net.URL("$u/api/signatures/stats").openConnection() as java.net.HttpURLConnection
-            c.connectTimeout = 4000; c.readTimeout = 4000
-            c.responseCode == 401 || c.responseCode == 200
-        } catch (_: Exception) { false }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         // Kunci light mode saja (tanpa dark mode)
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
@@ -116,79 +66,19 @@ class MainActivity : AppCompatActivity() {
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardVisit).setOnClickListener {
             startActivity(Intent(this, VisitActivity::class.java))
         }
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardSync).setOnClickListener { doSync() }
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardServer).setOnClickListener { showServerDialog() }
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardLogout).setOnClickListener { doLogout() }
-        findViewById<com.google.android.material.floatingactionbutton.FloatingActionButton>(R.id.fabCheckin).setOnClickListener {
-            startActivity(Intent(this, CheckinActivity::class.java))
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardSync).setOnClickListener {
+            startActivity(Intent(this, PendingActivity::class.java))
         }
-        findViewById<com.google.android.material.bottomappbar.BottomAppBar>(R.id.bottomBar)
-            .setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    R.id.nav_visit -> startActivity(Intent(this, VisitActivity::class.java))
-                    R.id.nav_report -> startActivity(Intent(this, ReportActivity::class.java))
-                    R.id.nav_setting -> showServerDialog()
-                    else -> return@setOnMenuItemClickListener true
-                }
-                true
-            }
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardServer).setOnClickListener {
+            startActivity(Intent(this, SettingActivity::class.java))
+        }
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardLogout).setOnClickListener { doLogout() }
+        BottomNav.wire(this, BottomNav.HOME)
         refreshSessionUI()
     }
 
-    /** Kirim semua antrean offline terenkripsi ke server. */
-    private fun doSync() {
-        val p = getSharedPreferences("cfg", MODE_PRIVATE)
-        val token = p.getString("auth_token", "") ?: ""
-        if (token.isEmpty()) { toast("Login dulu"); return }
-        if (!isOnlineNow()) { toast("Tidak ada sinyal — sync nanti"); return }
-        val dir = java.io.File(filesDir, "pending")
-        val metas = dir.listFiles { f -> f.name.endsWith(".meta.bin") } ?: emptyArray()
-        if (metas.isEmpty()) { toast("Tidak ada antrean offline"); return }
-        lifecycleScope.launch {
-            var ok = 0
-            var fail = 0
-            for (m in metas) {
-                try {
-                    val id = m.name.removeSuffix(".meta.bin")
-                    val meta = org.json.JSONObject(PendingCrypto.decryptText(m.readBytes()))
-                    val jpg = java.io.File(dir, "$id.jpg.bin")
-                    if (!jpg.exists()) { m.delete(); continue }
-                    // Dekrip ke file temp untuk upload
-                    val tmp = java.io.File.createTempFile("sync_$id", ".jpg", cacheDir)
-                    tmp.writeBytes(PendingCrypto.decryptBytes(jpg.readBytes()))
-                    fun s(v: String) = v.toRequestBody("text/plain".toMediaType())
-                    val part = okhttp3.MultipartBody.Part.createFormData(
-                        "photo", "selfie.jpg",
-                        tmp.asRequestBody("image/jpeg".toMediaType()))
-                    val acc = if (meta.isNull("accuracy")) null
-                    else s(meta.getDouble("accuracy").toString())
-                    api().checkin(
-                        "Bearer $token", part,
-                        s(meta.getDouble("lat").toString()),
-                        s(meta.getDouble("lng").toString()),
-                        acc,
-                        if (meta.isNull("address")) null else s(meta.getString("address")),
-                        s(meta.getString("ts")),
-                        s(meta.getString("payload")),
-                        s(meta.getString("hmac"))
-                    )
-                    tmp.delete(); jpg.delete(); m.delete()
-                    ok++
-                } catch (e: retrofit2.HttpException) {
-                    if (e.code() == 401) {
-                        doLogout(); toast("Sesi berakhir, login ulang"); return@launch
-                    }
-                    fail++
-                } catch (e: Exception) { fail++ }
-            }
-            refreshSessionUI()
-            toast("Sync selesai: $ok terkirim, $fail gagal")
-        }
-    }
-
     /** Jumlah antrean offline terenkripsi. */
-    private fun pendingSyncCount(): Int =
-        java.io.File(filesDir, "pending").listFiles { f -> f.name.endsWith(".meta.bin") }?.size ?: 0
+    private fun pendingSyncCount(): Int = SyncHelper.count(this)
 
     private fun isOnlineNow(): Boolean = try {        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val net = cm.activeNetwork ?: return false
@@ -245,7 +135,7 @@ class MainActivity : AppCompatActivity() {
                 toast("Login gagal (HTTP ${e.code()}): email/password salah atau server menolak")
             } catch (e: java.net.UnknownHostException) {
                 toast("Login gagal: server ${serverUrl()} tidak terjangkau — cek Setting Server & WiFi")
-            } catch (e: Exception) { toast("Login gagal: ${e.message}") }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Login gagal: ${e.message}") }
         }
     }
 

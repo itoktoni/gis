@@ -1,5 +1,6 @@
 package com.kantor.checkin
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -47,6 +48,7 @@ class ReportActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (token().isEmpty()) { finish(); return } // wajib login dulu
         setContentView(R.layout.activity_report)
+        BottomNav.wire(this, BottomNav.REPORT)
         tvEmpty = findViewById(R.id.tvEmpty)
 
         // Default: 7 hari terakhir s.d. hari ini
@@ -63,6 +65,9 @@ class ReportActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnFilter).setOnClickListener { load() }
+        findViewById<Button>(R.id.btnPending).setOnClickListener {
+            startActivity(Intent(this, PendingActivity::class.java))
+        }
         load()
     }
 
@@ -77,7 +82,7 @@ class ReportActivity : AppCompatActivity() {
             } catch (e: retrofit2.HttpException) {
                 if (e.code() == 401) { toast("Sesi berakhir, login ulang"); finish() }
                 else toast("Gagal memuat: HTTP ${e.code()}")
-            } catch (e: Exception) { toast("Gagal memuat: ${e.message}") }
+            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal memuat: ${e.message}") }
         }
     }
 
