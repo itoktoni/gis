@@ -19,8 +19,25 @@
         $netDist = $haversine($model->latitude, $model->longitude, $payload['net_lat'] ?? null, $payload['net_lng'] ?? null);
         $origDist = $haversine($model->latitude, $model->longitude, $model->original_latitude, $model->original_longitude);
 
+        // Perbandingan semua kandidat sumber lokasi (dari payload HP)
+        $mkCand = function ($label, $lat, $lng, $acc = null) use ($haversine, $model) {
+            if (!is_numeric($lat) || !is_numeric($lng)) return null;
+            $d = $haversine($model->latitude, $model->longitude, $lat, $lng);
+            return ['label' => $label, 'lat' => (float) $lat, 'lng' => (float) $lng,
+                'acc' => is_numeric($acc) ? (float) $acc : null, 'dist' => $d,
+                'url' => sprintf('https://www.google.com/maps?q=%.7f,%.7f', $lat, $lng)];
+        };
+        $candidates = array_values(array_filter([
+            $mkCand('Check-in (klaim HP)', $model->latitude, $model->longitude, $model->accuracy),
+            $mkCand('GPS mentah', $payload['gps_raw_lat'] ?? null, $payload['gps_raw_lng'] ?? null, $payload['gps_raw_acc'] ?? null),
+            $mkCand('Jaringan (menara/WiFi)', $payload['net_lat'] ?? null, $payload['net_lng'] ?? null, $payload['net_acc'] ?? null),
+            $mkCand('IP publik', $payload['ip_lat'] ?? null, $payload['ip_lng'] ?? null, null),
+        ]));
+
         $signals = [
             ['label' => 'Flag mock HP', 'value' => !empty($payload['mock']) ? 'YA — lokasi dari mock provider' : 'Tidak', 'bad' => !empty($payload['mock'])],
+            ['label' => 'Perangkat root', 'value' => !empty($payload['rooted']) ? 'YA — berisiko fake GPS sistem' : 'Tidak', 'bad' => !empty($payload['rooted'])],
+            ['label' => 'Framework Xposed', 'value' => !empty($payload['xposed']) ? 'YA — berisiko bypass deteksi mock' : 'Tidak', 'bad' => !empty($payload['xposed'])],
             ['label' => 'Developer options', 'value' => !empty($payload['dev_mode']) ? 'Aktif saat check-in' : 'Mati', 'bad' => !empty($payload['dev_mode'])],
             ['label' => 'Lokasi jaringan vs GPS', 'value' => $netDist === null ? 'Tidak ada data jaringan' : sprintf('selisih %s', $netDist >= 1000 ? number_format($netDist / 1000, 1).' km' : round($netDist).' m'), 'bad' => $netDist !== null && $netDist > 50000],
             ['label' => 'Satelit GNSS terkunci', 'value' => isset($payload['sat_used_in_fix']) ? $payload['sat_used_in_fix'].' satelit (terlihat: '.($payload['sat_count'] ?? '?').')' : 'Tidak ada data GNSS', 'bad' => isset($payload['accuracy'], $payload['sat_used_in_fix']) && (float) $payload['accuracy'] < 20 && (int) $payload['sat_used_in_fix'] === 0],
@@ -107,7 +124,12 @@
                     @if($model->original_latitude && $model->original_longitude)
                     <dt class="text-on-surface-variant">Dugaan lokasi asli</dt>
                     <dd class="col-span-2 font-mono text-[13px] text-red-700">{{ $model->original_latitude }}, {{ $model->original_longitude }}
-                        @if($origDist !== null)<span class="text-on-surface-variant">({{ $origDist >= 1000 ? number_format($origDist/1000, 1).' km' : round($origDist).' m' }} dari titik check-in)</span>@endif
+                        @if($model->original_distance_m !== null)<span class="text-on-surface-variant">({{ $model->original_distance_m >= 1000 ? number_format($model->original_distance_m/1000, 1).' km' : round($model->original_distance_m).' m' }} dari titik check-in)</span>@endif
+                        <div class="font-sans text-sm mt-1">
+                            <span class="inline-block px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-xs">sumber: {{ $model->original_source === 'gps_raw' ? 'GPS mentah HP' : ($model->original_source === 'network' ? 'jaringan' : ($model->original_source === 'ip' ? 'IP publik (kasar)' : '-')) }}</span>
+                            @if($model->original_accuracy)<span class="text-on-surface-variant text-xs">±{{ round($model->original_accuracy) }} m</span>@endif
+                            @if($model->original_map_url)<a href="{{ $model->original_map_url }}" target="_blank" class="text-primary hover:underline text-xs ml-1">Buka di Google Maps</a>@endif
+                        </div>
                         @if($model->original_address)<div class="font-sans text-sm text-on-surface-variant">{{ $model->original_address }}</div>@endif
                     </dd>
                     @endif
@@ -127,6 +149,36 @@
                     @endforeach
                 </div>
             </x-card>
+
+            @if(count($candidates) > 1)
+            <x-card :label="'Perbandingan Sumber Lokasi'" :icon="'compare_arrows'">
+                <div class="col-span-12 overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs uppercase tracking-wide text-on-surface-variant border-b border-outline-variant">
+                                <th class="py-2 pr-3">Sumber</th>
+                                <th class="py-2 pr-3">Koordinat</th>
+                                <th class="py-2 pr-3">Akurasi</th>
+                                <th class="py-2 pr-3">Jarak ke klaim HP</th>
+                                <th class="py-2">Peta</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/60">
+                            @foreach($candidates as $i => $c)
+                            <tr>
+                                <td class="py-2 pr-3 font-medium">{{ $c['label'] }}@if($i === 0) <span class="text-xs text-on-surface-variant">(acuan)</span>@endif</td>
+                                <td class="py-2 pr-3 font-mono text-[13px]">{{ $c['lat'] }}, {{ $c['lng'] }}</td>
+                                <td class="py-2 pr-3">{{ $c['acc'] !== null ? '±'.round($c['acc']).' m' : '-' }}</td>
+                                <td class="py-2 pr-3 font-semibold {{ $c['dist'] !== null && $c['dist'] > 50000 ? 'text-red-600' : '' }}">{{ $c['dist'] === null ? '-' : ($c['dist'] === 0.0 ? '0 m' : ($c['dist'] >= 1000 ? number_format($c['dist']/1000, 1).' km' : round($c['dist']).' m')) }}</td>
+                                <td class="py-2"><a href="{{ $c['url'] }}" target="_blank" class="text-primary hover:underline text-xs">Maps</a></td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <p class="text-xs text-on-surface-variant mt-2">Bila GPS mentah/jaringan dekat dengan klaim HP tapi IP jauh → indikasi IP tidak akurat, bukan lokasi palsu. Bila semuanya jauh → lokasi HP patut dicurigai.</p>
+                </div>
+            </x-card>
+            @endif
 
             <x-card :label="'Detail Teknis'" :icon="'terminal'">
                 <dl class="col-span-12 grid grid-cols-3 gap-y-2 text-sm">

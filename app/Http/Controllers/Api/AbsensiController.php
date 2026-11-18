@@ -120,6 +120,7 @@ class AbsensiController extends Controller
         // --- Verifikasi titik kunjungan: harus dalam radius titik ---
         $kunjungan = null;
         $selisihRadius = null;
+        $jarakM = null;
         if (! empty($validated['kunjungan_id'])) {
             $kunjungan = Kunjungan::find($validated['kunjungan_id']);
             if (! $kunjungan || (int) $kunjungan->kunjungan_id_user !== (int) $user->id) {
@@ -128,6 +129,7 @@ class AbsensiController extends Controller
             $dist = self::distanceM(
                 (float) $kunjungan->kunjungan_lat, (float) $kunjungan->kunjungan_lng,
                 (float) $validated['latitude'], (float) $validated['longitude']);
+            $jarakM = round($dist, 1);
             $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
             if ($dist > (float) $kunjungan->kunjungan_radius_m) {
                 $failures[] = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
@@ -194,6 +196,14 @@ class AbsensiController extends Controller
             $failures[] = 'GPS palsu (mock location) terdeteksi di HP';
         }
 
+        if (! empty($payload['rooted'])) {
+            $failures[] = 'Perangkat di-root (risiko fake GPS level sistem)';
+        }
+
+        if (! empty($payload['xposed'])) {
+            $failures[] = 'Framework Xposed/LSPosed terdeteksi (risiko bypass deteksi mock)';
+        }
+
         if (isset($payload['net_lat'], $payload['net_lng'])
             && is_numeric($payload['net_lat']) && is_numeric($payload['net_lng'])) {
             $netKm = self::distanceM(
@@ -253,16 +263,25 @@ class AbsensiController extends Controller
             $address = $this->reverseGeocode((float) $validated['latitude'], (float) $validated['longitude']);
         }
 
-        $origLat = $origLng = null;
+        $origLat = $origLng = $origSource = $origAcc = null;
         if (! empty($failures)) {
             $mock = ! empty($payload['mock']);
             if ($mock) {
-                if (isset($payload['ip_lat'], $payload['ip_lng']) && is_numeric($payload['ip_lat'])) {
-                    $origLat = (float) $payload['ip_lat'];
-                    $origLng = (float) $payload['ip_lng'];
+                // Prioritas dugaan lokasi asli: GPS mentah (paling akurat) -> jaringan -> IP (paling kasar)
+                if (isset($payload['gps_raw_lat'], $payload['gps_raw_lng']) && is_numeric($payload['gps_raw_lat'])) {
+                    $origLat = (float) $payload['gps_raw_lat'];
+                    $origLng = (float) $payload['gps_raw_lng'];
+                    $origSource = 'gps_raw';
+                    $origAcc = $payload['gps_raw_acc'] ?? null;
                 } elseif (isset($payload['net_lat'], $payload['net_lng']) && is_numeric($payload['net_lat'])) {
                     $origLat = (float) $payload['net_lat'];
                     $origLng = (float) $payload['net_lng'];
+                    $origSource = 'network';
+                    $origAcc = $payload['net_acc'] ?? null;
+                } elseif (isset($payload['ip_lat'], $payload['ip_lng']) && is_numeric($payload['ip_lat'])) {
+                    $origLat = (float) $payload['ip_lat'];
+                    $origLng = (float) $payload['ip_lng'];
+                    $origSource = 'ip';
                 }
             } else {
                 $origLat = (float) $validated['latitude'];
@@ -294,6 +313,7 @@ class AbsensiController extends Controller
             'latitude' => (float) $validated['latitude'],
             'longitude' => (float) $validated['longitude'],
             'accuracy' => isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
+            'jarak_m' => $jarakM,
             'ip_address' => $request->ip(),
             'client_timestamp' => $validated['client_timestamp'] ?? null,
         ]);
@@ -319,7 +339,13 @@ class AbsensiController extends Controller
             'is_offline' => $isOffline,
             'original_latitude' => $origLat,
             'original_longitude' => $origLng,
+            'original_source' => $origSource,
+            'original_accuracy' => is_numeric($origAcc) ? (float) $origAcc : null,
+            'original_distance_m' => ($origLat !== null) ? round(self::distanceM(
+                (float) $validated['latitude'], (float) $validated['longitude'], $origLat, $origLng
+            ), 1) : null,
             'original_address' => $origAddr ? mb_substr($origAddr, 0, 500) : null,
+            'original_map_url' => ($origLat !== null) ? sprintf('https://www.google.com/maps?q=%.7f,%.7f', $origLat, $origLng) : null,
         ]);
 
         if ($kunjungan && $authentic) {

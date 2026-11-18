@@ -427,6 +427,12 @@ class CheckinActivity : AppCompatActivity() {
                     (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
                         .getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 } catch (_: Exception) { null }
+                // GPS mentah (GPS_PROVIDER, bukan fused): sering masih asli walau fused di-mock.
+                // Dipakai server sebagai "dugaan lokasi asli" saat mock terdeteksi.
+                val gpsRaw: android.location.Location? = try {
+                    (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
+                        .getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                } catch (_: Exception) { null }
                 // Geolokasi IP diambil paralel di awal (ipDeferred); tinggal tunggu hasilnya
                 val ipResult = try { ipDeferred.await() }
                 catch (_: Exception) { Triple(Triple(null, null, null), null, "cancelled") }
@@ -461,9 +467,15 @@ class CheckinActivity : AppCompatActivity() {
                     .put("image_hash", sha256Hex(photo))
                     .put("mock", mock)
                     .put("dev_mode", isDevModeOn())
+                    .put("rooted", try { com.scottyab.rootbeer.RootBeer(this@CheckinActivity).isRooted } catch (_: Exception) { false })
+                    .put("xposed", isXposedInstalled())
                     .put("net_lat", netLoc?.latitude ?: JSONObject.NULL)
                     .put("net_lng", netLoc?.longitude ?: JSONObject.NULL)
                     .put("net_acc", if (netLoc?.hasAccuracy() == true) netLoc.accuracy.toDouble() else JSONObject.NULL)
+                    .put("gps_raw_lat", gpsRaw?.latitude ?: JSONObject.NULL)
+                    .put("gps_raw_lng", gpsRaw?.longitude ?: JSONObject.NULL)
+                    .put("gps_raw_acc", if (gpsRaw?.hasAccuracy() == true) gpsRaw.accuracy.toDouble() else JSONObject.NULL)
+                    .put("gps_raw_mock", gpsRaw?.let { isMockLocation(it) } ?: JSONObject.NULL)
                     .put("ip_pub", ipPub ?: JSONObject.NULL)
                     .put("ip_lat", ipLat ?: JSONObject.NULL)
                     .put("ip_lng", ipLng ?: JSONObject.NULL)
@@ -694,12 +706,58 @@ class CheckinActivity : AppCompatActivity() {
         return try { l.isFromMockProvider } catch (_: Exception) { false }
     }
 
+    /** Cek framework Xposed/LSPosed terinstal (dipakai modul cheat UnMock-GPS/HideMockLocation). */
+    private fun isXposedInstalled(): Boolean {
+        return try {
+            val pkgs = setOf(
+                "org.lsposed.manager", "de.robv.android.xposed.installer",
+                "com.solohsu.android.edxp.manager", "org.meowcat.edxposed.manager"
+            )
+            pkgs.any { pkg ->
+                try {
+                    if (Build.VERSION.SDK_INT >= 33) {
+                        packageManager.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageManager.getPackageInfo(pkg, 0)
+                    }
+                    true
+                } catch (_: Exception) { false }
+            }
+        } catch (_: Exception) { false }
+    }
+
     private fun mockLocationThreat(): String? {
         val cr = contentResolver
         try {
             val mockApp = Settings.Secure.getString(cr, "mock_location")
             if (!mockApp.isNullOrEmpty() && mockApp != "0") {
                 return "Aplikasi mock location aktif ($mockApp)"
+            }
+        } catch (_: Exception) { }
+        // Paket RootBeer: perangkat root = jalur umum fake GPS level sistem
+        try {
+            if (com.scottyab.rootbeer.RootBeer(this).isRooted) {
+                return "Perangkat di-root (risiko fake GPS sistem)"
+            }
+        } catch (_: Exception) { }
+        // UnMock-GPS & HideMockLocation adalah MODUL CHEAT Xposed (menyembunyikan flag
+        // mock dari aplikasi). Kehadiran Xposed manager = risiko bypass deteksi mock.
+        try {
+            val xposedPkgs = setOf(
+                "org.lsposed.manager", "de.robv.android.xposed.installer",
+                "com.solohsu.android.edxp.manager", "org.meowcat.edxposed.manager"
+            )
+            for (pkg in xposedPkgs) {
+                try {
+                    if (Build.VERSION.SDK_INT >= 33) {
+                        packageManager.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageManager.getPackageInfo(pkg, 0)
+                    }
+                    return "Framework Xposed/LSPosed terinstal ($pkg) — risiko bypass deteksi mock"
+                } catch (_: Exception) { }
             }
         } catch (_: Exception) { }
         val devOn = isDevModeOn()

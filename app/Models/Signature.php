@@ -19,8 +19,8 @@ class Signature extends BaseModel
     protected $fillable = [
         'user_id', 'crypto_key_id', 'type', 'label', 'original_filename',
         'content_hash', 'embedded_signature', 'status', 'expired_at',
-        'mock', 'developer', 'alamat', 'latitude', 'longitude', 'photo', 'accuracy', 'ip_address',
-        'client_timestamp',
+        'mock', 'developer', 'alamat', 'latitude', 'longitude', 'photo', 'accuracy',
+        'jarak_m', 'ip_address', 'client_timestamp',
     ];
 
     protected function casts(): array

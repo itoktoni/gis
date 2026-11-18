@@ -20,7 +20,8 @@ class Checkin extends BaseModel
         'signature_id', 'user_id', 'latitude', 'longitude',
         'accuracy', 'selisih_radius_m', 'address', 'client_timestamp', 'photo_path',
         'status', 'failure_reason', 'payload_json', 'ip_address',
-        'original_latitude', 'original_longitude', 'original_address',
+        'original_latitude', 'original_longitude', 'original_source', 'original_accuracy',
+        'original_distance_m', 'original_address', 'original_map_url',
         'is_offline',
     ];
 
