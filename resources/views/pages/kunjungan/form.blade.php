@@ -36,14 +36,15 @@
             objekSelect.addEventListener('change', function () {
                 var row = objekData[this.value];
                 if (!row) return;
-                if (namaInput && !namaInput.value) namaInput.value = row.nama ?? '';
+                if (namaInput && (!namaInput.value || namaInput.value.indexOf('Kunjungan ') === 0)) namaInput.value = row.nama ?? '';
                 if (latInput && row.lat !== null) latInput.value = row.lat;
                 if (lngInput && row.lng !== null) lngInput.value = row.lng;
             });
-            // Pilih kebun -> isi lat/lng dari titik tengah kebun bila masih kosong
+            // Pilih kebun -> isi nama + lat/lng bila masih kosong
             if (kebunSelect) kebunSelect.addEventListener('change', function () {
                 var row = kebunData[this.value];
                 if (!row) return;
+                if (namaInput && !namaInput.value && row.nama) namaInput.value = 'Kunjungan ' + row.nama;
                 if (latInput && !latInput.value && row.lat !== null) latInput.value = row.lat;
                 if (lngInput && !lngInput.value && row.lng !== null) lngInput.value = row.lng;
             });
