@@ -58,7 +58,11 @@ class VisitActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 myLoc = try {
-                    LocationServices.getFusedLocationProviderClient(this@VisitActivity)
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(
+                            this@VisitActivity, android.Manifest.permission.ACCESS_FINE_LOCATION
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) null
+                    else LocationServices.getFusedLocationProviderClient(this@VisitActivity)
                         .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).resultOrNull()
                 } catch (_: Exception) { null }
                 val api = MainActivity().let {
@@ -233,6 +237,13 @@ class VisitActivity : AppCompatActivity() {
 
     /** Geser map card ke posisi HP saat ini. */
     private fun centerOnMe(mv: MapView) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            toast("Berikan izin lokasi dulu")
+            return
+        }
         lifecycleScope.launch {
             try {
                 val loc = LocationServices.getFusedLocationProviderClient(this@VisitActivity)

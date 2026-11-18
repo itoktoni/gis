@@ -22,13 +22,12 @@ object BottomNav {
                 a.startActivity(intent().addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
             }
         }
-        go(R.id.navHome, HOME) { Intent(a, MainActivity::class.java) }
         go(R.id.navCheckin, CHECKIN) { Intent(a, CheckinActivity::class.java) }
         go(R.id.navVisit, VISIT) { Intent(a, VisitActivity::class.java) }
         go(R.id.navReport, REPORT) { Intent(a, ReportActivity::class.java) }
         go(R.id.navSetting, SETTING) { Intent(a, SettingActivity::class.java) }
         // Tandai halaman aktif (redupkan yang lain)
-        mapOf(R.id.navHome to HOME, R.id.navCheckin to CHECKIN, R.id.navVisit to VISIT,
+        mapOf(R.id.navCheckin to CHECKIN, R.id.navVisit to VISIT,
             R.id.navReport to REPORT, R.id.navSetting to SETTING
         ).forEach { (id, page) ->
             a.findViewById<View>(id)?.alpha = if (page == current) 1f else 0.55f

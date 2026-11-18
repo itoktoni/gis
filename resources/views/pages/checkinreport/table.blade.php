@@ -16,11 +16,36 @@
                 <button type="submit" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-all hover:brightness-110">
                     <span class="material-symbols-outlined text-xl">visibility</span> Tampilkan
                 </button>
-                <a href="{{ moduleRoute('getTable') }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
-                    <span class="material-symbols-outlined text-xl">restart_alt</span> Reset
+                <button type="button" onclick="setPreset('today')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Hari ini</button>
+                <button type="button" onclick="setPreset('week')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Minggu ini</button>
+                <button type="button" onclick="setPreset('month')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Bulan ini</button>
+                <a href="{{ moduleRoute('getTable', ['all' => 1]) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">restart_alt</span> Semua
                 </a>
             </div>
         </form>
+
+        <script>
+            function setPreset(mode) {
+                var now = new Date();
+                var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+                var fmt = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+                var from, to = fmt(now);
+                if (mode === 'today') { from = to; }
+                else if (mode === 'week') {
+                    var day = (now.getDay() + 6) % 7; // Senin = 0
+                    var mon = new Date(now); mon.setDate(now.getDate() - day);
+                    from = fmt(mon);
+                } else if (mode === 'month') {
+                    from = fmt(now).slice(0, 7) + '-01';
+                }
+                var f = document.querySelector('input[name="from"]');
+                var t = document.querySelector('input[name="to"]');
+                if (f) f.value = from;
+                if (t) t.value = to;
+                f.closest('form').submit();
+            }
+        </script>
 
         {{-- Table --}}
         @php
@@ -50,8 +75,8 @@
 
             <x-slot:body>
                 @foreach($data as $table)
-                <tr>
-                    <td class="w-24 whitespace-nowrap">
+                <tr class="report-row cursor-pointer hover:bg-surface-container" data-photo="{{ $table->photo_path ? Storage::url($table->photo_path) : '' }}" data-address="{{ $table->address ?? '-' }}">
+                    <td class="w-24 whitespace-nowrap" onclick="event.stopPropagation()">
                         <div class="flex gap-2">
                             <a href="{{ moduleRoute('getShow', ['id' => $table->field_primary]) }}" wire:navigate class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Detail">
                                 <span class="material-symbols-outlined text-lg">visibility</span>
@@ -80,7 +105,7 @@
                 <x-table-mobile-select :model="$model" :total="$data"/>
                 <div class="p-3 space-y-3" id="mBody">
                     @foreach($data as $table)
-                    <div class="border border-outline-variant rounded-xl p-4 bg-surface-container-lowest shadow-sm" data-id="{{ $table->field_primary }}">
+                    <div class="report-card border border-outline-variant rounded-xl p-4 bg-surface-container-lowest shadow-sm cursor-pointer" data-id="{{ $table->field_primary }}" data-photo="{{ $table->photo_path ? Storage::url($table->photo_path) : '' }}" data-address="{{ $table->hasUser?->name ?? '' }} — {{ $table->address ?? '-' }}">
                         <div class="flex items-center gap-3 mb-3">
                             @if($table->photo_path)
                             <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-xl object-cover cursor-zoom-in" alt="foto" loading="lazy">
@@ -114,35 +139,49 @@
     <script src="/js/table.js"></script>
     <script>initTable('{{ $sortField }}', '{{ $sortDir }}');</script>
 
-    {{-- Popup foto (lightbox) --}}
+    {{-- Popup foto + alamat (lightbox) --}}
     <div id="photo-popup" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/80 p-4 cursor-zoom-out">
-        <img id="photo-popup-img" src="" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl" alt="foto check-in" />
+        <div class="max-w-3xl w-full" onclick="event.stopPropagation()">
+            <img id="photo-popup-img" src="" class="w-full max-h-[75vh] object-contain rounded-xl shadow-2xl bg-black" alt="foto check-in" />
+            <p id="photo-popup-addr" class="mt-2 text-sm text-white/90 text-center"></p>
+        </div>
     </div>
     <script>
         (function () {
             var popup = document.getElementById('photo-popup');
             var popupImg = document.getElementById('photo-popup-img');
+            var popupAddr = document.getElementById('photo-popup-addr');
             if (!popup || !popupImg) return;
+            function openPopup(src, addr) {
+                if (!src) return;
+                popupImg.src = src;
+                if (popupAddr) popupAddr.textContent = addr || '';
+                popup.classList.remove('hidden');
+                popup.classList.add('flex');
+            }
+            function closePopup() {
+                popup.classList.add('hidden');
+                popup.classList.remove('flex');
+                popupImg.src = '';
+            }
             document.addEventListener('click', function (e) {
-                var t = e.target.closest ? e.target.closest('.photo-thumb') : null;
-                if (t && t.dataset.full) {
-                    popupImg.src = t.dataset.full;
-                    popup.classList.remove('hidden');
-                    popup.classList.add('flex');
+                var thumb = e.target.closest ? e.target.closest('.photo-thumb') : null;
+                if (thumb && thumb.dataset.full) {
+                    var row = thumb.closest('tr');
+                    openPopup(thumb.dataset.full, row ? row.dataset.address : '');
+                    return;
+                }
+                var row = e.target.closest ? (e.target.closest('tr.report-row') || e.target.closest('.report-card')) : null;
+                if (row && !e.target.closest('a,button')) {
+                    openPopup(row.dataset.photo, (row.dataset.address || '') + '');
                     return;
                 }
                 if (!popup.classList.contains('hidden') && e.target.closest('#photo-popup')) {
-                    popup.classList.add('hidden');
-                    popup.classList.remove('flex');
-                    popupImg.src = '';
+                    closePopup();
                 }
             });
             document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
-                    popup.classList.add('hidden');
-                    popup.classList.remove('flex');
-                    popupImg.src = '';
-                }
+                if (e.key === 'Escape' && !popup.classList.contains('hidden')) closePopup();
             });
         })();
     </script>

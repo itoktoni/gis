@@ -16,6 +16,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Absensi lapangan (check-in + titik kunjungan kebun)
     Route::get('/absensi/secret', [\App\Http\Controllers\Api\AbsensiController::class, 'secret']);
+    Route::get('/absensi/stats', [\App\Http\Controllers\Api\AbsensiController::class, 'stats']);
     Route::get('/absensi/kunjungan', [\App\Http\Controllers\Api\AbsensiController::class, 'kunjungan']);
     Route::post('/absensi/checkin', [\App\Http\Controllers\Api\AbsensiController::class, 'store']);
     Route::get('/absensi/checkins', [\App\Http\Controllers\Api\AbsensiController::class, 'index']);

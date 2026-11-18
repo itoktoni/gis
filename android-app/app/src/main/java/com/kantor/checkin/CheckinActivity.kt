@@ -199,7 +199,7 @@ class CheckinActivity : AppCompatActivity() {
 
     /** Pantau satelit GNSS asli (jumlah, usedInFix, rata-rata C/N0). */
     private fun startGnssMonitoring() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !hasLocationPermission()) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !hasLocationPermission()) return
         val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val cb = object : android.location.GnssStatus.Callback() {
             override fun onSatelliteStatusChanged(status: android.location.GnssStatus) {
@@ -221,7 +221,7 @@ class CheckinActivity : AppCompatActivity() {
     }
 
     private fun stopGnssMonitoring() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         try {
             val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
             gnssCallback?.let { lm.unregisterGnssStatusCallback(it) }
@@ -420,24 +420,17 @@ class CheckinActivity : AppCompatActivity() {
 
                 tvStatus.text = "Mengirim..."
                 val ts = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date())
-                @Suppress("DEPRECATION")
-                val mock = loc.isMock
+                val mock = isMockLocation(loc)
                 // Lokasi independen: NETWORK_PROVIDER (menara/WiFi), umumnya tak ikut dipalsukan.
                 // Abaikan bila basi (>5 menit) — lastKnown bisa cache kota lain dan menyesatkan.
-                val netLoc: android.location.Location? = try {
-                    (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
-                        .getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.takeIf {
-                            (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
-                        }
-                } catch (_: Exception) { null }
+                val netLoc: android.location.Location? = lastKnownLoc(LocationManager.NETWORK_PROVIDER)?.takeIf {
+                    (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
+                }
                 // GPS mentah (GPS_PROVIDER, bukan fused): sering masih asli walau fused di-mock.
                 // Dipakai server sebagai "dugaan lokasi asli" saat mock terdeteksi.
-                val gpsRaw: android.location.Location? = try {
-                    (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
-                        .getLastKnownLocation(LocationManager.GPS_PROVIDER)?.takeIf {
-                            (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
-                        }
-                } catch (_: Exception) { null }
+                val gpsRaw: android.location.Location? = lastKnownLoc(LocationManager.GPS_PROVIDER)?.takeIf {
+                    (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
+                }
                 // Geolokasi IP diambil paralel di awal (ipDeferred); tinggal tunggu hasilnya
                 val ipResult = try { ipDeferred.await() }
                 catch (_: Exception) { Triple(Triple(null, null, null), null, "cancelled") }
@@ -531,7 +524,25 @@ class CheckinActivity : AppCompatActivity() {
         }
     }
 
+    /** lastKnownLocation dengan cek permission eksplisit (lolos lint MissingPermission). */
+    private fun lastKnownLoc(provider: String): android.location.Location? {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return null
+        return try {
+            (getSystemService(Context.LOCATION_SERVICE) as LocationManager).getLastKnownLocation(provider)
+        } catch (_: SecurityException) { null }
+    }
+
     private suspend fun currentLocation() = suspendCancellableCoroutine<android.location.Location?> { c ->
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            c.resume(null)
+            return@suspendCancellableCoroutine
+        }
         LocationServices.getFusedLocationProviderClient(this)
             .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
             .addOnSuccessListener { c.resume(it) }
@@ -642,16 +653,35 @@ class CheckinActivity : AppCompatActivity() {
         }
     }
 
-    /** Kecilkan foto bila sisi terpanjang > 1600px agar upload jauh lebih cepat. */
+    /** Kecilkan foto bila sisi terpanjang > 1600px agar upload jauh lebih cepat.
+     *  EXIF orientasi diterapkan ke piksel dulu (compress menghapus EXIF). */
     private fun downscaleIfNeeded(f: File, maxDim: Int = 1600): File {
         try {
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(f.absolutePath, bounds)
-            if (bounds.outWidth <= 0 || maxOf(bounds.outWidth, bounds.outHeight) <= maxDim) return f
+            if (bounds.outWidth <= 0) return f
+            val exif = try { androidx.exifinterface.media.ExifInterface(f.absolutePath) } catch (_: Exception) { null }
+            val orient = exif?.getAttributeInt(
+                androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+            ) ?: androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
             var sample = 1
             while (bounds.outWidth / sample > maxDim || bounds.outHeight / sample > maxDim) sample *= 2
-            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = android.graphics.BitmapFactory.decodeFile(f.absolutePath, opts) ?: return f
+            if (sample <= 1 && orient == androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL) return f
+            val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = maxOf(sample, 1) }
+            val raw = android.graphics.BitmapFactory.decodeFile(f.absolutePath, opts) ?: return f
+            val m = android.graphics.Matrix()
+            when (orient) {
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> m.postRotate(90f)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> m.postRotate(180f)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> m.postRotate(270f)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> m.postScale(-1f, 1f)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_VERTICAL -> m.postScale(1f, -1f)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSPOSE -> { m.postRotate(90f); m.postScale(-1f, 1f) }
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSVERSE -> { m.postRotate(270f); m.postScale(-1f, 1f) }
+            }
+            val bmp = if (m.isIdentity) raw
+            else android.graphics.Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true).also { raw.recycle() }
             val out = File(cacheDir, "send_${System.currentTimeMillis()}.jpg")
             java.io.FileOutputStream(out).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it) }
             bmp.recycle()

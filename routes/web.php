@@ -30,6 +30,8 @@ Route::middleware('auth')->post('/centrifugo/token', function (Request $request)
     ]);
 });
 
+Route::get('/validate', [ValidateController::class, 'form'])->name('validate.form');
+Route::post('/validate', [ValidateController::class, 'verify'])->name('validate.check');
 Route::get('/validate/{id}', [ValidateController::class, 'show'])->name('validate.byId');
 
 Route::middleware(['auth', 'verified', 'access'])->group(function () {

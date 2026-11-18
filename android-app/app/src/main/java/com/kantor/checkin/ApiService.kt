@@ -31,6 +31,16 @@ data class CheckinItem(
 )
 data class PagedCheckins(val data: List<CheckinItem>)
 
+// Statistik check-in per rentang tanggal (dashboard)
+data class StatsRes(
+    val from: String? = null,
+    val to: String? = null,
+    val total: Int = 0,
+    val valid: Int = 0,
+    val invalid: Int = 0,
+    val fake: Int = 0
+)
+
 // Titik kunjungan harian (dari master Objek kebun)
 data class VisitPoint(
     val id: String,
@@ -90,6 +100,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Query("date") date: String?
     ): VisitPointsRes
+
+    @GET("api/absensi/stats")
+    suspend fun stats(
+        @Header("Authorization") token: String,
+        @Query("from") from: String?,
+        @Query("to") to: String?
+    ): StatsRes
 
     @GET("api/absensi/reminder-config")
     suspend fun reminderConfig(

@@ -51,11 +51,10 @@ class ReportActivity : AppCompatActivity() {
         BottomNav.wire(this, BottomNav.REPORT)
         tvEmpty = findViewById(R.id.tvEmpty)
 
-        // Default: 7 hari terakhir s.d. hari ini
+        // Default: hari ini saja
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val today = Calendar.getInstance()
         findViewById<TextView>(R.id.etTo).text = fmt.format(today.time)
-        today.add(Calendar.DAY_OF_YEAR, -7)
         findViewById<TextView>(R.id.etFrom).text = fmt.format(today.time)
 
         adapter = ReportAdapter(serverUrl()) { item -> showPhoto(item) }
@@ -65,10 +64,37 @@ class ReportActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnFilter).setOnClickListener { load() }
+        findViewById<Button>(R.id.btnToday).setOnClickListener { setPresetToday(); load() }
+        findViewById<Button>(R.id.btnWeek).setOnClickListener { setPresetWeek(); load() }
+        findViewById<Button>(R.id.btnMonth).setOnClickListener { setPresetMonth(); load() }
         findViewById<Button>(R.id.btnPending).setOnClickListener {
             startActivity(Intent(this, PendingActivity::class.java))
         }
         load()
+    }
+
+    /** Preset rentang tanggal: hari ini / minggu ini (Senin–Minggu) / bulan ini. */
+    private fun setPresetToday() {
+        val s = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Calendar.getInstance().time)
+        findViewById<TextView>(R.id.etFrom).text = s
+        findViewById<TextView>(R.id.etTo).text = s
+    }
+
+    private fun setPresetWeek() {
+        val cal = Calendar.getInstance()
+        val dow = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Senin = 0
+        cal.add(Calendar.DAY_OF_YEAR, -dow)
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        findViewById<TextView>(R.id.etFrom).text = fmt.format(cal.time)
+        findViewById<TextView>(R.id.etTo).text = fmt.format(Calendar.getInstance().time)
+    }
+
+    private fun setPresetMonth() {
+        val cal = Calendar.getInstance()
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        findViewById<TextView>(R.id.etTo).text = fmt.format(cal.time)
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        findViewById<TextView>(R.id.etFrom).text = fmt.format(cal.time)
     }
 
     private fun load() {

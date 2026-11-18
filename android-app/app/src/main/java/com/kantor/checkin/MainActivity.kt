@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardServer).setOnClickListener {
             startActivity(Intent(this, SettingActivity::class.java))
         }
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardLogout).setOnClickListener { doLogout() }
+        setupDashboard()
         BottomNav.wire(this, BottomNav.HOME)
         refreshSessionUI()
     }
@@ -150,6 +150,8 @@ class MainActivity : AppCompatActivity() {
             if (loggedIn) android.view.View.GONE else android.view.View.VISIBLE
         findViewById<android.view.View>(R.id.menuGrid).visibility =
             if (loggedIn) android.view.View.VISIBLE else android.view.View.GONE
+        findViewById<android.view.View>(R.id.dashCard).visibility =
+            if (loggedIn) android.view.View.VISIBLE else android.view.View.GONE
         findViewById<android.view.View>(R.id.bottomNav).visibility =
             if (loggedIn) android.view.View.VISIBLE else android.view.View.GONE
         val n = if (loggedIn) pendingSyncCount() else 0
@@ -158,6 +160,87 @@ class MainActivity : AppCompatActivity() {
         if (n > 0) findViewById<TextView>(R.id.tvSyncLabel).text = "Sync ($n)"
         if (!loggedIn) tvInfo.text = ""
         else tvInfo.text = ""
+        if (loggedIn) loadDashboard()
+    }
+
+    // ---------- Dashboard widget ----------
+    private var dashFrom: String? = null
+    private var dashTo: String? = null
+    private var dashLabel = "Hari ini"
+
+    private fun todayStr(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Calendar.getInstance().time)
+
+    private fun setupDashboard() {
+        if (dashFrom == null) { dashFrom = todayStr(); dashTo = todayStr() }
+        findViewById<Button>(R.id.chipToday).setOnClickListener { setDashRange(todayStr(), todayStr(), "Hari ini") }
+        findViewById<Button>(R.id.chipWeek).setOnClickListener {
+            val cal = java.util.Calendar.getInstance()
+            val dow = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -dow)
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            setDashRange(fmt.format(cal.time), todayStr(), "Minggu ini")
+        }
+        findViewById<Button>(R.id.chipMonth).setOnClickListener {
+            val cal = java.util.Calendar.getInstance()
+            cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            setDashRange(fmt.format(cal.time), todayStr(), "Bulan ini")
+        }
+        findViewById<Button>(R.id.chipYear).setOnClickListener {
+            val cal = java.util.Calendar.getInstance()
+            cal.set(java.util.Calendar.DAY_OF_YEAR, 1)
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            setDashRange(fmt.format(cal.time), todayStr(), "Tahun ini")
+        }
+        findViewById<Button>(R.id.chipRange).setOnClickListener { showRangeDialog() }
+    }
+
+    private fun setDashRange(from: String, to: String, label: String) {
+        dashFrom = from; dashTo = to; dashLabel = label
+        loadDashboard()
+    }
+
+    private fun showRangeDialog() {
+        val etFrom = EditText(this).apply { hint = "Dari (yyyy-mm-dd)"; setText(dashFrom ?: ""); setSingleLine() }
+        val etTo = EditText(this).apply { hint = "Sampai (yyyy-mm-dd)"; setText(dashTo ?: ""); setSingleLine() }
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 0)
+            addView(etFrom); addView(etTo)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rentang Tanggal")
+            .setView(layout)
+            .setPositiveButton("Tampilkan") { _, _ ->
+                val f = etFrom.text.toString().trim()
+                val t = etTo.text.toString().trim()
+                if (f.isNotEmpty() && t.isNotEmpty()) setDashRange(f, t, "$f s.d. $t")
+                else toast("Isi kedua tanggal")
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun loadDashboard() {
+        val p = getSharedPreferences("cfg", MODE_PRIVATE)
+        val token = p.getString("auth_token", "") ?: ""
+        if (token.isEmpty()) return
+        if (dashFrom == null) { dashFrom = todayStr(); dashTo = todayStr() }
+        findViewById<TextView>(R.id.tvDashPeriod).text = dashLabel
+        lifecycleScope.launch {
+            try {
+                val res = api().stats("Bearer $token", dashFrom, dashTo)
+                findViewById<TextView>(R.id.tvStatValid).text = res.valid.toString()
+                findViewById<TextView>(R.id.tvStatInvalid).text = res.invalid.toString()
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) toast("Dashboard gagal: ${e.message}")
+            }
+            try {
+                val visit = api().visitPoints("Bearer $token", todayStr())
+                findViewById<TextView>(R.id.tvStatVisit).text = visit.data.size.toString()
+            } catch (_: Exception) { }
+        }
     }
 
     private fun doLogout(silent: Boolean = false) {

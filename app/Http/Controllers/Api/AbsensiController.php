@@ -39,6 +39,30 @@ class AbsensiController extends Controller
     }
 
     /**
+     * Statistik check-in milik user per rentang tanggal untuk dashboard HP.
+     * GET /api/absensi/stats?from=YYYY-MM-DD&to=YYYY-MM-DD (auth:sanctum)
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+
+        $q = Checkin::where('user_id', $request->user()->id)
+            ->when($request->filled('from'), fn ($qq) => $qq->whereDate('created_at', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($qq) => $qq->whereDate('created_at', '<=', $request->input('to')));
+
+        $rows = (clone $q)->selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
+
+        return response()->json([
+            'from' => $request->input('from'),
+            'to' => $request->input('to'),
+            'total' => (int) array_sum($rows->all()),
+            'valid' => (int) ($rows['valid'] ?? 0),
+            'invalid' => (int) ($rows['invalid'] ?? 0),
+            'fake' => (int) ($rows['fake'] ?? 0),
+        ]);
+    }
+
+    /**
      * Config pengingat check-in untuk notifikasi lokal Android.
      * GET /api/absensi/reminder-config (auth:sanctum)
      * HP memuat ini setiap aplikasi dibuka lalu menjadwalkan alarm harian.
@@ -305,6 +329,16 @@ class AbsensiController extends Controller
             $validated['client_timestamp'] ?? null,
             ! empty($payload['front']),
         );
+
+        // Anti-replay: foto yang isinya sama persis sudah pernah dipakai check-in
+        // (indikasi unduh lalu unggah ulang sebagai check-in baru).
+        if (Signature::where('content_hash', $result['content_hash'])->exists()) {
+            $failures[] = 'Foto sudah pernah digunakan untuk check-in lain (indikasi unduh & unggah ulang)';
+            if ($status === 'valid') {
+                $status = 'invalid';
+                $authentic = false;
+            }
+        }
 
         $signature = Signature::create([
             'user_id' => $user->id,

@@ -57,21 +57,21 @@
                     android:background="#CC1E4FA8" android:textColor="@color/white"
                     android:textSize="12sp" android:text="Mencari GPS..." />
 
-                <ImageButton android:id="@+id/btnFlip"
+                <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/btnFlip"
                     android:src="@android:drawable/ic_menu_rotate"
                     android:contentDescription="Balik kamera"
                     android:background="@drawable/circle_primary"
-                    android:tint="@color/white"
+                    app:tint="@color/white"
                     android:padding="14dp"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="top|end"
                     android:layout_margin="10dp" />
 
-                <ImageButton android:id="@+id/btnLoc"
+                <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/btnLoc"
                     android:src="@android:drawable/ic_menu_mylocation"
                     android:contentDescription="Lokasi saya"
                     android:background="@drawable/circle_primary"
-                    android:tint="@color/white"
+                    app:tint="@color/white"
                     android:padding="14dp"
                     android:layout_width="56dp" android:layout_height="56dp"
                     android:layout_gravity="top|start"

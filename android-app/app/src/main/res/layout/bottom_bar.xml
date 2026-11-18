@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom menu bersama: Home • Kunjungan • Check-In besar • Laporan • Setting -->
+<!-- Bottom menu bersama: Check-In • Kunjungan • Server • Laporan -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/bottomNav"
     android:orientation="horizontal"
     android:gravity="center_vertical"
@@ -10,16 +11,18 @@
     android:paddingTop="6dp" android:paddingBottom="6dp"
     android:layout_width="match_parent" android:layout_height="84dp">
 
-    <LinearLayout android:id="@+id/navHome"
+    <LinearLayout android:id="@+id/navCheckin"
         android:orientation="vertical" android:gravity="center"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:padding="2dp"
         android:layout_width="0dp" android:layout_height="match_parent"
         android:layout_weight="1">
-        <ImageView android:src="@drawable/ic_home"
-            android:tint="@color/apn_primary"
-            android:layout_width="26dp" android:layout_height="26dp" />
-        <TextView android:text="Home" android:textSize="10sp"
+        <androidx.appcompat.widget.AppCompatImageView android:src="@android:drawable/ic_menu_camera"
+            android:background="@drawable/circle_primary"
+            app:tint="@color/white"
+            android:padding="14dp"
+            android:layout_width="56dp" android:layout_height="56dp" />
+        <TextView android:text="Check-In" android:textSize="10sp" android:textStyle="bold"
             android:textColor="@color/apn_primary"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>
@@ -30,40 +33,10 @@
         android:padding="2dp"
         android:layout_width="0dp" android:layout_height="match_parent"
         android:layout_weight="1">
-        <ImageView android:src="@android:drawable/ic_menu_mylocation"
-            android:tint="@color/apn_primary"
+        <androidx.appcompat.widget.AppCompatImageView android:src="@android:drawable/ic_menu_mylocation"
+            app:tint="@color/apn_primary"
             android:layout_width="26dp" android:layout_height="26dp" />
         <TextView android:text="Kunjungan" android:textSize="10sp"
-            android:textColor="@color/apn_primary"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-    </LinearLayout>
-
-    <LinearLayout android:id="@+id/navCheckin"
-        android:orientation="vertical" android:gravity="center"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="2dp"
-        android:layout_width="0dp" android:layout_height="match_parent"
-        android:layout_weight="1">
-        <ImageView android:src="@android:drawable/ic_menu_camera"
-            android:background="@drawable/circle_primary"
-            android:tint="@color/white"
-            android:padding="14dp"
-            android:layout_width="56dp" android:layout_height="56dp" />
-        <TextView android:text="Check-In" android:textSize="10sp" android:textStyle="bold"
-            android:textColor="@color/apn_primary"
-            android:layout_width="wrap_content" android:layout_height="wrap_content" />
-    </LinearLayout>
-
-    <LinearLayout android:id="@+id/navReport"
-        android:orientation="vertical" android:gravity="center"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="2dp"
-        android:layout_width="0dp" android:layout_height="match_parent"
-        android:layout_weight="1">
-        <ImageView android:src="@android:drawable/ic_menu_agenda"
-            android:tint="@color/apn_primary"
-            android:layout_width="26dp" android:layout_height="26dp" />
-        <TextView android:text="Laporan" android:textSize="10sp"
             android:textColor="@color/apn_primary"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>
@@ -74,10 +47,24 @@
         android:padding="2dp"
         android:layout_width="0dp" android:layout_height="match_parent"
         android:layout_weight="1">
-        <ImageView android:src="@android:drawable/ic_menu_preferences"
-            android:tint="@color/apn_primary"
+        <androidx.appcompat.widget.AppCompatImageView android:src="@android:drawable/ic_menu_preferences"
+            app:tint="@color/apn_primary"
             android:layout_width="26dp" android:layout_height="26dp" />
-        <TextView android:text="Setting" android:textSize="10sp"
+        <TextView android:text="Server" android:textSize="10sp"
+            android:textColor="@color/apn_primary"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/navReport"
+        android:orientation="vertical" android:gravity="center"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="2dp"
+        android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1">
+        <androidx.appcompat.widget.AppCompatImageView android:src="@android:drawable/ic_menu_agenda"
+            app:tint="@color/apn_primary"
+            android:layout_width="26dp" android:layout_height="26dp" />
+        <TextView android:text="Laporan" android:textSize="10sp"
             android:textColor="@color/apn_primary"
             android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>

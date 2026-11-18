@@ -1,5 +1,6 @@
 package com.kantor.checkin
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -22,6 +23,14 @@ class SettingActivity : AppCompatActivity() {
         val tvResult = findViewById<TextView>(R.id.tvResult)
         findViewById<TextView>(R.id.tvAppVersion).text =
             "Versi ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+
+        findViewById<Button>(R.id.btnLogoutSetting).setOnClickListener {
+            p.edit().remove("auth_token").remove("checkin_secret")
+                .remove("user_id").remove("user_email").remove("user_role").apply()
+            Toast.makeText(this, "Logout", Toast.LENGTH_LONG).show()
+            startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            finish()
+        }
         etServer.setText(p.getString("base_url", MainActivity.DEFAULT_URL) ?: MainActivity.DEFAULT_URL)
 
         findViewById<Button>(R.id.btnTest).setOnClickListener {

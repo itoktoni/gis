@@ -64,6 +64,11 @@ class CheckinReportController extends Controller
 
     public function getTable(GeneralRequest $request)
     {
+        // Default: hari ini saja bila filter tanggal kosong
+        if (! $request->filled('from') && ! $request->filled('to') && ! $request->boolean('all')) {
+            $today = now()->toDateString();
+            $request->merge(['from' => $today, 'to' => $today]);
+        }
         $data = $this->getData()->cursorPaginate($request->input('per_page', 25))->withQueryString();
 
         return $this->views($this->template(), [

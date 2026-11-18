@@ -51,6 +51,7 @@ return [
             'items' => [
                 ['route' => 'kunjungan.getTable', 'icon' => 'push_pin', 'label' => 'Titik Kunjungan', 'match' => ['kunjungan.*']],
                 ['route' => 'checkin-report.getTable', 'icon' => 'fact_check', 'label' => 'Report Check-In', 'match' => ['checkin-report.*']],
+                ['route' => 'validate.form', 'icon' => 'verified', 'label' => 'Validasi Foto', 'match' => ['validate.*']],
             ],
         ],
         [
