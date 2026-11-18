@@ -204,15 +204,9 @@ class AbsensiController extends Controller
             $failures[] = 'Framework Xposed/LSPosed terdeteksi (risiko bypass deteksi mock)';
         }
 
-        if (isset($payload['net_lat'], $payload['net_lng'])
-            && is_numeric($payload['net_lat']) && is_numeric($payload['net_lng'])) {
-            $netKm = self::distanceM(
-                (float) $validated['latitude'], (float) $validated['longitude'],
-                (float) $payload['net_lat'], (float) $payload['net_lng']) / 1000;
-            if ($netKm > 50) {
-                $failures[] = sprintf('GPS jauh dari lokasi jaringan (±%.0f km) — indikasi fake GPS', $netKm);
-            }
-        }
+        // Cek selisih lokasi jaringan vs GPS DINONAKTIFKAN: lastKnown NETWORK_PROVIDER
+        // sering berupa cache basi kota lain sehingga menyesatkan (vonis ratusan km).
+        // Data net_lat/net_lng tetap direkam di payload untuk perbandingan manual.
 
         $last = Checkin::where('user_id', $user->id)->latest()->first();
         if ($last && $last->client_timestamp) {
@@ -296,6 +290,7 @@ class AbsensiController extends Controller
             isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
             $address,
             $validated['client_timestamp'] ?? null,
+            ! empty($payload['front']),
         );
 
         $signature = Signature::create([

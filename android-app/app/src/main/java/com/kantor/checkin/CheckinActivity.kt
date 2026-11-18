@@ -422,16 +422,21 @@ class CheckinActivity : AppCompatActivity() {
                 val ts = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(Date())
                 @Suppress("DEPRECATION")
                 val mock = loc.isMock
-                // Lokasi independen: NETWORK_PROVIDER (menara/WiFi), umumnya tak ikut dipalsukan
+                // Lokasi independen: NETWORK_PROVIDER (menara/WiFi), umumnya tak ikut dipalsukan.
+                // Abaikan bila basi (>5 menit) — lastKnown bisa cache kota lain dan menyesatkan.
                 val netLoc: android.location.Location? = try {
                     (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
-                        .getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                        .getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.takeIf {
+                            (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
+                        }
                 } catch (_: Exception) { null }
                 // GPS mentah (GPS_PROVIDER, bukan fused): sering masih asli walau fused di-mock.
                 // Dipakai server sebagai "dugaan lokasi asli" saat mock terdeteksi.
                 val gpsRaw: android.location.Location? = try {
                     (getSystemService(Context.LOCATION_SERVICE) as LocationManager)
-                        .getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                        .getLastKnownLocation(LocationManager.GPS_PROVIDER)?.takeIf {
+                            (android.os.SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1_000_000_000 <= 300
+                        }
                 } catch (_: Exception) { null }
                 // Geolokasi IP diambil paralel di awal (ipDeferred); tinggal tunggu hasilnya
                 val ipResult = try { ipDeferred.await() }
@@ -467,6 +472,7 @@ class CheckinActivity : AppCompatActivity() {
                     .put("image_hash", sha256Hex(photo))
                     .put("mock", mock)
                     .put("dev_mode", isDevModeOn())
+                    .put("front", lensFacing == CameraSelector.LENS_FACING_FRONT)
                     .put("rooted", try { com.scottyab.rootbeer.RootBeer(this@CheckinActivity).isRooted } catch (_: Exception) { false })
                     .put("xposed", isXposedInstalled())
                     .put("net_lat", netLoc?.latitude ?: JSONObject.NULL)

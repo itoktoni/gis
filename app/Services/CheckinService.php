@@ -22,9 +22,9 @@ class CheckinService
      * @param string $jpegBytes  bytes foto asli dari HP
      * @return array{bytes, content_hash, embedded_signature, expired_at}
      */
-    public function signCheckin(string $jpegBytes, User $user, float $lat, float $lng, ?float $accuracy, ?string $address, ?string $clientTimestamp): array
+    public function signCheckin(string $jpegBytes, User $user, float $lat, float $lng, ?float $accuracy, ?string $address, ?string $clientTimestamp, bool $front = false): array
     {
-        $framed = $this->applyFrame($jpegBytes, $lat, $lng, $address);
+        $framed = $this->applyFrame($jpegBytes, $lat, $lng, $address, $front);
         $contentHash = hash('sha256', $framed);
 
         $metadata = [
@@ -96,7 +96,7 @@ class CheckinService
      * Gambar banner bawah font besar + logo APN kiri-atas.
      * Font TrueType (Arial) bila tersedia, fallback font built-in GD.
      */
-    private function applyFrame(string $jpegBytes, float $lat, float $lng, ?string $address): string
+    private function applyFrame(string $jpegBytes, float $lat, float $lng, ?string $address, bool $front = false): string
     {
         $img = @imagecreatefromstring($jpegBytes);
         if ($img === false) {
@@ -105,6 +105,11 @@ class CheckinService
 
         // Jaring pengaman orientasi: putar sesuai EXIF (kamera belakang sering landscape).
         $img = $this->normalizeOrientation($img, $jpegBytes);
+
+        // Kamera depan: mirror horizontal agar sama seperti preview di HP.
+        if ($front && function_exists('imageflip')) {
+            imageflip($img, IMG_FLIP_HORIZONTAL);
+        }
 
         $w = imagesx($img);
         $h = imagesy($img);
