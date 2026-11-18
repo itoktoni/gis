@@ -2,7 +2,7 @@
 
 <x-layouts::app>
     <x-breadcrumb :items="[['url' => '/dashboard', 'label' => 'Home'], ['url' => '', 'label' => moduleLabel()]]" />
-    <div class="content mt-4 lg:mt-0">
+    <div class="content mt-4 mb-4 lg:mt-0">
         {{-- Filters --}}
         <form method="GET" action="{{ moduleRoute('getTable') }}">
             <x-card label="Filter Report Check-In">
@@ -16,9 +16,9 @@
                 <button type="submit" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-all hover:brightness-110">
                     <span class="material-symbols-outlined text-xl">visibility</span> Tampilkan
                 </button>
-                <button type="button" onclick="setPreset('today')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Hari ini</button>
-                <button type="button" onclick="setPreset('week')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Minggu ini</button>
-                <button type="button" onclick="setPreset('month')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">Bulan ini</button>
+                <button type="button" onclick="setPreset('today')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">HARI</button>
+                <button type="button" onclick="setPreset('week')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">MGGU</button>
+                <button type="button" onclick="setPreset('month')" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">BLN</button>
                 <a href="{{ moduleRoute('getTable', ['all' => 1]) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">restart_alt</span> Semua
                 </a>
@@ -140,10 +140,13 @@
     <script>initTable('{{ $sortField }}', '{{ $sortDir }}');</script>
 
     {{-- Popup foto + alamat (lightbox) --}}
-    <div id="photo-popup" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/80 p-4 cursor-zoom-out">
-        <div class="max-w-3xl w-full" onclick="event.stopPropagation()">
-            <img id="photo-popup-img" src="" class="w-full max-h-[75vh] object-contain rounded-xl shadow-2xl bg-black" alt="foto check-in" />
-            <p id="photo-popup-addr" class="mt-2 text-sm text-white/90 text-center"></p>
+    <div id="photo-popup" class="hidden fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-4 cursor-zoom-out">
+        <div class="min-h-full flex items-center justify-center">
+            <div class="max-w-3xl w-full" onclick="event.stopPropagation()">
+                <img id="photo-popup-img" src="" class="w-full max-h-[70vh] object-contain rounded-xl shadow-2xl bg-black" alt="foto check-in" />
+                <p id="photo-popup-addr" class="mt-2 text-sm text-white/90 text-center"></p>
+                <p class="mt-1 text-xs text-white/60 text-center">Klik di luar gambar untuk menutup</p>
+            </div>
         </div>
     </div>
     <script>
@@ -154,14 +157,14 @@
             if (!popup || !popupImg) return;
             function openPopup(src, addr) {
                 if (!src) return;
+                document.body.style.overflow = 'hidden';
                 popupImg.src = src;
                 if (popupAddr) popupAddr.textContent = addr || '';
                 popup.classList.remove('hidden');
-                popup.classList.add('flex');
             }
             function closePopup() {
+                document.body.style.overflow = '';
                 popup.classList.add('hidden');
-                popup.classList.remove('flex');
                 popupImg.src = '';
             }
             document.addEventListener('click', function (e) {

@@ -129,23 +129,23 @@
                     <LinearLayout android:orientation="horizontal"
                         android:layout_width="match_parent" android:layout_height="wrap_content"
                         android:layout_marginTop="10dp">
-                        <Button android:id="@+id/chipToday" android:text="Hari ini" style="@style/APN.Button.Primary"
+                        <Button android:id="@+id/chipToday" android:text="HARI" style="@style/APN.Button.Primary"
                             android:textSize="11sp" android:minHeight="0dp"
                             android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"
                             android:layout_marginEnd="3dp" />
-                        <Button android:id="@+id/chipWeek" android:text="Minggu" style="@style/APN.Button.Outlined"
+                        <Button android:id="@+id/chipWeek" android:text="MGGU" style="@style/APN.Button.Outlined"
                             android:textSize="11sp" android:minHeight="0dp"
                             android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"
                             android:layout_marginStart="3dp" android:layout_marginEnd="3dp" />
-                        <Button android:id="@+id/chipMonth" android:text="Bulan" style="@style/APN.Button.Outlined"
+                        <Button android:id="@+id/chipMonth" android:text="BLN" style="@style/APN.Button.Outlined"
                             android:textSize="11sp" android:minHeight="0dp"
                             android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"
                             android:layout_marginStart="3dp" android:layout_marginEnd="3dp" />
-                        <Button android:id="@+id/chipYear" android:text="Tahun" style="@style/APN.Button.Outlined"
+                        <Button android:id="@+id/chipYear" android:text="THN" style="@style/APN.Button.Outlined"
                             android:textSize="11sp" android:minHeight="0dp"
                             android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"
                             android:layout_marginStart="3dp" android:layout_marginEnd="3dp" />
-                        <Button android:id="@+id/chipRange" android:text="Range" style="@style/APN.Button.Outlined"
+                        <Button android:id="@+id/chipRange" android:text="TGL" style="@style/APN.Button.Outlined"
                             android:textSize="11sp" android:minHeight="0dp"
                             android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"
                             android:layout_marginStart="3dp" />
@@ -211,6 +211,7 @@
 
                 <com.google.android.material.card.MaterialCardView android:id="@+id/cardCheckin"
                     android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnSpan="2" android:layout_gravity="fill_horizontal"
                     android:layout_columnWeight="1"
                     android:layout_margin="6dp"
                     android:clickable="true" android:focusable="true"

@@ -166,39 +166,60 @@ class MainActivity : AppCompatActivity() {
     // ---------- Dashboard widget ----------
     private var dashFrom: String? = null
     private var dashTo: String? = null
-    private var dashLabel = "Hari ini"
+    private var dashLabel = "HARI"
 
     private fun todayStr(): String =
         java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Calendar.getInstance().time)
 
     private fun setupDashboard() {
         if (dashFrom == null) { dashFrom = todayStr(); dashTo = todayStr() }
-        findViewById<Button>(R.id.chipToday).setOnClickListener { setDashRange(todayStr(), todayStr(), "Hari ini") }
+        markChip(R.id.chipToday)
+        findViewById<Button>(R.id.chipToday).setOnClickListener { setDashRange(todayStr(), todayStr(), "HARI", R.id.chipToday) }
         findViewById<Button>(R.id.chipWeek).setOnClickListener {
             val cal = java.util.Calendar.getInstance()
             val dow = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
             cal.add(java.util.Calendar.DAY_OF_YEAR, -dow)
             val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-            setDashRange(fmt.format(cal.time), todayStr(), "Minggu ini")
+            setDashRange(fmt.format(cal.time), todayStr(), "MGGU", R.id.chipWeek)
         }
         findViewById<Button>(R.id.chipMonth).setOnClickListener {
             val cal = java.util.Calendar.getInstance()
             cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
             val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-            setDashRange(fmt.format(cal.time), todayStr(), "Bulan ini")
+            setDashRange(fmt.format(cal.time), todayStr(), "BLN", R.id.chipMonth)
         }
         findViewById<Button>(R.id.chipYear).setOnClickListener {
             val cal = java.util.Calendar.getInstance()
             cal.set(java.util.Calendar.DAY_OF_YEAR, 1)
             val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-            setDashRange(fmt.format(cal.time), todayStr(), "Tahun ini")
+            setDashRange(fmt.format(cal.time), todayStr(), "THN", R.id.chipYear)
         }
         findViewById<Button>(R.id.chipRange).setOnClickListener { showRangeDialog() }
     }
 
-    private fun setDashRange(from: String, to: String, label: String) {
+    private fun setDashRange(from: String, to: String, label: String, chipId: Int = R.id.chipToday) {
         dashFrom = from; dashTo = to; dashLabel = label
+        markChip(chipId)
         loadDashboard()
+    }
+
+    /** Tandai chip filter yang aktif (biru), lainnya putih. */
+    private fun markChip(selectedId: Int) {
+        val primary = androidx.core.content.ContextCompat.getColor(this, R.color.apn_primary)
+        val ids = listOf(R.id.chipToday, R.id.chipWeek, R.id.chipMonth, R.id.chipYear, R.id.chipRange)
+        ids.forEach { id ->
+            val b = findViewById<com.google.android.material.button.MaterialButton>(id)
+            if (id == selectedId) {
+                b.backgroundTintList = android.content.res.ColorStateList.valueOf(primary)
+                b.setTextColor(android.graphics.Color.WHITE)
+                b.strokeColor = android.content.res.ColorStateList.valueOf(primary)
+            } else {
+                b.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT)
+                b.setTextColor(primary)
+                b.strokeColor = android.content.res.ColorStateList.valueOf(primary)
+                b.strokeWidth = (1 * resources.displayMetrics.density).toInt()
+            }
+        }
     }
 
     private fun showRangeDialog() {
@@ -215,7 +236,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Tampilkan") { _, _ ->
                 val f = etFrom.text.toString().trim()
                 val t = etTo.text.toString().trim()
-                if (f.isNotEmpty() && t.isNotEmpty()) setDashRange(f, t, "$f s.d. $t")
+                if (f.isNotEmpty() && t.isNotEmpty()) setDashRange(f, t, "$f s.d. $t", R.id.chipRange)
                 else toast("Isi kedua tanggal")
             }
             .setNegativeButton("Batal", null)
