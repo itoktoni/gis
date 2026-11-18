@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvInfo: TextView
 
     companion object {
-        const val DEFAULT_URL = "http://192.168.1.44:8000/"
+        const val DEFAULT_URL = "https://apnkalteng2.web.id/"
     }
 
     /** URL server dari Setting (tersimpan di HP), bukan hardcode. */
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
         if (email.isEmpty() || pass.isEmpty()) { toast("Isi email dan password"); return }
         lifecycleScope.launch {
             try {
-                val res = api().login(LoginReq(email, pass))
+                val res = api().login(email, pass)
                 val uid = res.user?.id ?: 0
                 if (uid == 0) { toast("Login gagal: respons server tidak valid"); return@launch }
                 // Sanctum: token opaque + ambil secret HMAC khusus absensi
@@ -156,7 +156,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.cardSync).visibility =
             if (n > 0) android.view.View.VISIBLE else android.view.View.GONE
         if (n > 0) findViewById<TextView>(R.id.tvSyncLabel).text = "Sync ($n)"
-        if (!loggedIn) tvInfo.text = "Server: ${serverUrl()}"
+        if (!loggedIn) tvInfo.text = ""
         else tvInfo.text = ""
     }
 

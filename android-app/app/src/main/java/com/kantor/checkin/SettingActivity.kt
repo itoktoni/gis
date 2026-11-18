@@ -20,6 +20,8 @@ class SettingActivity : AppCompatActivity() {
         val p = getSharedPreferences("cfg", MODE_PRIVATE)
         val etServer = findViewById<EditText>(R.id.etServer)
         val tvResult = findViewById<TextView>(R.id.tvResult)
+        findViewById<TextView>(R.id.tvAppVersion).text =
+            "Versi ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
         etServer.setText(p.getString("base_url", MainActivity.DEFAULT_URL) ?: MainActivity.DEFAULT_URL)
 
         findViewById<Button>(R.id.btnTest).setOnClickListener {

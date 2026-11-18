@@ -56,8 +56,9 @@ data class ReminderConfig(
 )
 
 interface ApiService {
+    @FormUrlEncoded
     @POST("api/login")
-    suspend fun login(@Body body: LoginReq): LoginRes
+    suspend fun login(@Field("email") email: String, @Field("password") password: String): LoginRes
 
     @GET("api/absensi/secret")
     suspend fun secret(@Header("Authorization") token: String): SecretRes

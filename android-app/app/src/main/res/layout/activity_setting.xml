@@ -19,14 +19,8 @@
                 android:text="⚙️ Setting Server"
                 android:textSize="20sp" android:textStyle="bold"
                 android:textColor="@color/apn_text"
+                android:layout_marginBottom="12dp"
                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
-
-            <TextView
-                android:text="Alamat server Laravel (satu WiFi dengan HP). Menyimpan akan mengeluarkan akun — login ulang setelahnya."
-                android:textSize="13sp"
-                android:textColor="@color/apn_text_muted"
-                android:layout_marginTop="4dp" android:layout_marginBottom="12dp"
-                android:layout_width="match_parent" android:layout_height="wrap_content" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -44,7 +38,7 @@
                         android:layout_width="wrap_content" android:layout_height="wrap_content" />
 
                     <EditText android:id="@+id/etServer"
-                        android:hint="http://192.168.1.44:8000/"
+                        android:hint="https://apnkalteng2.web.id/"
                         android:textSize="15sp" android:singleLine="true"
                         android:layout_marginTop="6dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
@@ -64,6 +58,31 @@
                         style="@style/APN.Button.Primary"
                         android:layout_marginTop="8dp"
                         android:layout_width="match_parent" android:layout_height="56dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/APN.Card" app:cardElevation="2dp"
+                app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary"
+                android:layout_marginTop="12dp">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <TextView android:text="APN Monitoring"
+                        android:textSize="17sp" android:textStyle="bold"
+                        android:textColor="@color/apn_text"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+                    <TextView android:id="@+id/tvAppVersion"
+                        android:text="Versi -"
+                        android:textSize="14sp"
+                        android:textColor="@color/apn_text_muted"
+                        android:layout_marginTop="6dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

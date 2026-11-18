@@ -10,13 +10,13 @@ android {
         applicationId = "com.kantor.checkin"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
     buildTypes {
         release { minifyEnabled false }
     }
-    buildFeatures { viewBinding = true }
+    buildFeatures { viewBinding = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
