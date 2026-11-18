@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand: Agrinas Palma Nusantara -->
+    <color name="apn_primary">#2E69D2</color>
+    <color name="apn_primary_dark">#1E4FA8</color>
+    <color name="apn_primary_light">#DCE7FB</color>
+    <color name="apn_accent">#FFD54F</color>
+    <color name="apn_bg">#F4F6FB</color>
+    <color name="apn_text">#1A2333</color>
+    <color name="apn_text_muted">#5B6B82</color>
+    <color name="apn_success">#1B9E57</color>
+    <color name="apn_danger">#D63A3A</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

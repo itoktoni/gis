@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical" android:padding="16dp"
+    android:background="@color/apn_bg"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+        <ImageView
+            android:layout_width="36dp" android:layout_height="36dp"
+            android:src="@mipmap/ic_launcher"
+            android:background="@color/white"
+            android:padding="2dp" />
+
+        <TextView
+            android:text="Laporan Check-In"
+            android:textSize="18sp" android:textStyle="bold"
+            android:textColor="@color/apn_text"
+            android:layout_marginStart="10dp"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        style="@style/APN.Card"
+        android:layout_marginTop="10dp"
+        app:cardElevation="2dp">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="12dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+
+            <EditText android:id="@+id/etFrom" android:hint="Dari (yyyy-mm-dd)"
+                android:textSize="13sp" android:singleLine="true"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" />
+
+            <TextView android:text="s.d." android:padding="6dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+            <EditText android:id="@+id/etTo" android:hint="Sampai"
+                android:textSize="13sp" android:singleLine="true"
+                android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" />
+
+            <Button android:id="@+id/btnFilter" android:text="Go"
+                style="@style/APN.Button.Primary"
+                android:layout_marginStart="8dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView android:id="@+id/tvEmpty"
+        android:textSize="13sp"
+        android:textColor="@color/apn_text_muted"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv"
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="4dp"
+        android:clipToPadding="false" />
+</LinearLayout>

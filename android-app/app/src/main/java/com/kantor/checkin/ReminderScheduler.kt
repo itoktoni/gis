@@ -1,0 +1,74 @@
+package com.kantor.checkin
+
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.Calendar
+
+/**
+ * Memuat config pengingat dari server (GET /api/absensi/reminder-config)
+ * setiap aplikasi dibuka, lalu menjadwalkan alarm lokal harian.
+ */
+object ReminderScheduler {
+    private const val PREF_TIMES = "reminder_times"
+
+    fun refresh(ctx: Context) {
+        val app = ctx.applicationContext
+        val p = app.getSharedPreferences("cfg", Context.MODE_PRIVATE)
+        val token = p.getString("auth_token", "") ?: ""
+        if (token.isEmpty()) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val base = (p.getString("base_url", MainActivity.DEFAULT_URL) ?: MainActivity.DEFAULT_URL)
+                    .trim().let { if (it.endsWith("/")) it else "$it/" }
+                val api = retrofit2.Retrofit.Builder().baseUrl(base)
+                    .client(okhttp3.OkHttpClient.Builder().build())
+                    .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+                    .build().create(ApiService::class.java)
+                val cfg = api.reminderConfig("Bearer $token")
+                p.edit().putString(PREF_TIMES, cfg.times.joinToString(",")).apply()
+                schedule(app, cfg)
+            } catch (_: Exception) {
+                // Offline: pakai jadwal tersimpan terakhir
+                val saved = (p.getString(PREF_TIMES, "") ?: "").split(",").filter { it.matches(Regex("\\d{2}:\\d{2}")) }
+                if (saved.isNotEmpty()) schedule(app, ReminderConfig(true, saved, "Waktunya Check-In", "Jangan lupa check-in kehadiran hari ini."))
+            }
+        }
+    }
+
+    fun schedule(ctx: Context, cfg: ReminderConfig) {
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        // Hapus jadwal lama dulu
+        for (i in 0 until 8) am.cancel(pending(ctx, i, null, null))
+        if (!cfg.enabled || cfg.times.isEmpty()) return
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+        cfg.times.take(8).forEachIndexed { i, hm ->
+            val (h, m) = hm.split(":").map { it.toIntOrNull() ?: 0 }
+            val cal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                if (timeInMillis <= System.currentTimeMillis()) add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val pi = pending(ctx, i, cfg.title, cfg.message)
+            if (canExact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pi)
+        }
+    }
+
+    private fun pending(ctx: Context, idx: Int, title: String?, message: String?): PendingIntent {
+        val it = Intent(ctx, ReminderReceiver::class.java).apply {
+            action = "com.kantor.checkin.REMIND_$idx"
+            title?.let { putExtra("title", it) }
+            message?.let { putExtra("message", it) }
+        }
+        return PendingIntent.getBroadcast(
+            ctx, 100 + idx, it,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+}

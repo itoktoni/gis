@@ -40,3 +40,14 @@ npm.lock
 
 # EnvKit — never commit .env backups (they contain secrets)
 .env.bkp*
+
+# Android — build outputs & local SDK paths (jangan commit)
+*.apk
+*.aab
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties
+android-app/.idea/
+android-app/.kotlin/
+android-app/captures/

@@ -11,15 +11,24 @@
                 <x-select col="3" name="kebun_id_pt" label="PT / Grup" :options="$ptOptions" class="search" />
                 <x-select col="3" name="kebun_id_distrik" label="Distrik" :options="$distrikOptions" class="search" />
                 <x-select col="6" name="kebun_status" label="Status" :options="$statusOptions" />
-                <x-input col="4" name="kebun_luas_ha" label="Luas TM Planted (Ha)" type="number" />
-                <x-input col="4" name="kebun_target_produksi_kg" label="Target Produksi (Kg)" type="number" />
-                <x-input col="4" name="kebun_rkap_kg" label="Produksi TBS RKAP (Kg)" type="number" />
-                <x-input col="4" name="kebun_jumlah_pohon" label="Jumlah Pohon" type="number" />
-                <x-input col="2" name="kebun_lat" label="Latitude" type="number" />
-                <x-input col="2" name="kebun_lng" label="Longitude" type="number" />
+                <x-input col="4" name="kebun_luas_ha" label="Luas TM Planted (Ha)" type="number" step="any" />
+                <x-input col="4" name="kebun_target_produksi_kg" label="Target Produksi (Kg)" type="number" step="any" />
+                <x-input col="4" name="kebun_rkap_kg" label="Produksi TBS RKAP (Kg)" type="number" step="any" />
+                <x-input col="4" name="kebun_jumlah_pohon" label="Jumlah Pohon" type="number" step="any" />
+                <x-input col="2" name="kebun_lat" label="Latitude" type="number" step="any" />
+                <x-input col="2" name="kebun_lng" label="Longitude" type="number" step="any" />
 
                 <div class="col-span-12">
                     <label class="text-sm font-medium">Marking Area Sawit — klik peta untuk tambah titik, geser titik untuk ubah bentuk</label>
+                    <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="kebun-search" placeholder="Cari alamat... (cth: Pangkalan Bun)" autocomplete="off"
+                            class="flex-1 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-2 text-sm" />
+                        <button type="button" id="kebun-search-btn"
+                            class="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90">Cari</button>
+                        <button type="button" id="kebun-gps-btn"
+                            class="rounded-lg border border-primary px-4 py-2 text-sm text-primary hover:bg-primary hover:text-white">📍 Lokasi Saya</button>
+                    </div>
+                    <div id="kebun-search-results" class="mt-1 rounded-lg border border-outline-variant divide-y divide-outline-variant/60 hidden"></div>
                     <div id="kebun-form-map" style="height: 380px;" class="relative z-0 rounded-xl border border-outline-variant mt-2"></div>
                     <div class="flex flex-wrap gap-2 mt-2">
                         <button type="button" id="btn-mark-mode" class="btn">Mode tambah: ON</button>
@@ -158,6 +167,60 @@
             });
             document.getElementById('btn-undo-point').addEventListener('click', function () { points.pop(); sync(); });
             document.getElementById('btn-clear-points').addEventListener('click', function () { points = []; sync(); });
+
+            // --- Pencarian alamat (Nominatim OSM, batasi Indonesia): geser peta ke hasil ---
+            var kSearchInput = document.getElementById('kebun-search');
+            var kSearchBtn = document.getElementById('kebun-search-btn');
+            var kResultsEl = document.getElementById('kebun-search-results');
+            function runKebunSearch() {
+                var q = (kSearchInput.value || '').trim();
+                if (q.length < 3) { kResultsEl.classList.add('hidden'); return; }
+                kResultsEl.innerHTML = '<div class="px-3 py-2 text-sm text-on-surface-variant">Mencari...</div>';
+                kResultsEl.classList.remove('hidden');
+                fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&addressdetails=1&countrycodes=id&limit=5', {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (r) { return r.json(); }).then(function (list) {
+                    if (!list.length) {
+                        kResultsEl.innerHTML = '<div class="px-3 py-2 text-sm text-on-surface-variant">Tidak ditemukan. Coba kata kunci lain.</div>';
+                        return;
+                    }
+                    kResultsEl.innerHTML = '';
+                    list.forEach(function (item) {
+                        var b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = 'w-full text-left px-3 py-2 text-sm hover:bg-surface-container';
+                        b.textContent = item.display_name;
+                        b.addEventListener('click', function () {
+                            map.setView([parseFloat(item.lat), parseFloat(item.lon)], 15);
+                            lookupWilayah(parseFloat(item.lat), parseFloat(item.lon));
+                            kResultsEl.classList.add('hidden');
+                        });
+                        kResultsEl.appendChild(b);
+                    });
+                }).catch(function () {
+                    kResultsEl.innerHTML = '<div class="px-3 py-2 text-sm text-on-surface-variant">Gagal mencari (perlu internet).</div>';
+                });
+            }
+            kSearchBtn.addEventListener('click', runKebunSearch);
+            kSearchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); runKebunSearch(); } });
+
+            // --- Lokasi saya (GPS browser): geser peta agar mudah marking di sekitar posisi ---
+            var kGpsBtn = document.getElementById('kebun-gps-btn');
+            kGpsBtn.addEventListener('click', function () {
+                if (!navigator.geolocation) { if (infoEl) infoEl.textContent = 'Browser tidak mendukung GPS.'; return; }
+                kGpsBtn.disabled = true;
+                kGpsBtn.textContent = 'Mencari GPS...';
+                navigator.geolocation.getCurrentPosition(function (pos) {
+                    kGpsBtn.disabled = false;
+                    kGpsBtn.textContent = '📍 Lokasi Saya';
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+                    lookupWilayah(pos.coords.latitude, pos.coords.longitude);
+                }, function (err) {
+                    kGpsBtn.disabled = false;
+                    kGpsBtn.textContent = '📍 Lokasi Saya';
+                    if (infoEl) infoEl.textContent = 'Gagal dapat GPS: ' + (err.message || 'izin lokasi ditolak') + '. Nyalakan izin lokasi browser lalu coba lagi.';
+                }, { enableHighAccuracy: true, timeout: 15000 });
+            });
 
             // Muat polygon lama (mode edit) atau tempelan GeoJSON
             function loadFromTextarea(fit) {

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/apn_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+        <!-- Header -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="4dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+
+            <ImageView
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:src="@mipmap/ic_launcher"
+                android:background="@color/white"
+                android:padding="2dp" />
+
+            <TextView
+                android:text="Check-In Lapangan"
+                android:textSize="18sp" android:textStyle="bold"
+                android:textColor="@color/apn_text"
+                android:layout_marginStart="10dp"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Preview kamera -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="380dp"
+            style="@style/APN.Card"
+            android:layout_marginTop="8dp"
+            app:cardElevation="4dp">
+
+            <FrameLayout
+                android:layout_width="match_parent" android:layout_height="match_parent">
+
+                <androidx.camera.view.PreviewView
+                    android:id="@+id/preview"
+                    android:layout_width="match_parent" android:layout_height="match_parent" />
+
+                <TextView android:id="@+id/tvStamp"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="10dp" android:padding="8dp"
+                    android:background="#CC1E4FA8" android:textColor="@color/white"
+                    android:textSize="12sp" android:text="Mencari GPS..." />
+
+                <Button android:id="@+id/btnFlip" android:text="⇄"
+                    style="@style/APN.Button.Primary"
+                    android:textSize="24sp"
+                    android:layout_width="64dp" android:layout_height="64dp"
+                    android:minWidth="64dp" android:minHeight="64dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="10dp" />
+
+                <Button android:id="@+id/btnLoc" android:text="◎"
+                    style="@style/APN.Button.Primary"
+                    android:textSize="24sp"
+                    android:layout_width="64dp" android:layout_height="64dp"
+                    android:minWidth="64dp" android:minHeight="64dp"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="10dp" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView android:id="@+id/tvWarn"
+            android:textSize="13sp"
+            android:textColor="#B3261E"
+            android:background="#FDECEA"
+            android:padding="10dp"
+            android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <Button android:id="@+id/btnCapture" android:text="📷 CAPTURE &amp; KIRIM"
+            style="@style/APN.Button.Primary"
+            android:textSize="16sp"
+            android:layout_marginTop="14dp"
+            android:layout_width="match_parent" android:layout_height="62dp" />
+
+        <TextView android:id="@+id/tvStatus"
+            android:textSize="13sp"
+            android:textColor="@color/apn_text_muted"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+    </LinearLayout>
+</ScrollView>

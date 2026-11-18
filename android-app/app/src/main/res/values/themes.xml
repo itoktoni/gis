@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.APNCheckIn" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/apn_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/apn_primary_light</item>
+        <item name="colorSecondary">@color/apn_primary_dark</item>
+        <item name="android:windowBackground">@color/apn_bg</item>
+    </style>
+
+    <style name="APN.Button.Primary" parent="Widget.Material3.Button">
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <style name="APN.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <style name="APN.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">18dp</item>
+    </style>
+</resources>

@@ -22,8 +22,8 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * @mixin IdeHelperUser
  */
-#[Fillable(['name', 'email', 'password', 'role', 'phone', 'avatar', 'verified_at'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'role', 'phone', 'avatar', 'verified_at', 'checkin_secret'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'checkin_secret'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -111,6 +111,19 @@ class User extends Authenticatable
     public function isEditor(): bool
     {
         return $this->role === 'editor';
+    }
+
+    /**
+     * Kunci RSA aktif untuk tanda tangan digital / check-in.
+     */
+    public function activeCryptoKey()
+    {
+        return $this->hasOne(CryptoKey::class, 'user_id', 'id')->where('is_active', true);
+    }
+
+    public function hasCheckins()
+    {
+        return $this->hasMany(Checkin::class, 'user_id', 'id');
     }
 
     /**

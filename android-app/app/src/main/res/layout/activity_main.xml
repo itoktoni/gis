@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/apn_bg">
+
+    <!-- Konten -->
+    <ScrollView
+        android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+
+            <!-- Header brand -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/APN.Card"
+                app:cardBackgroundColor="@color/apn_primary"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="16dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <ImageView
+                        android:layout_width="48dp" android:layout_height="48dp"
+                        android:src="@mipmap/ic_launcher"
+                        android:background="@color/white"
+                        android:padding="4dp" />
+
+                    <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_marginStart="12dp"
+                        android:layout_width="0dp" android:layout_weight="1"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:text="APN Monitoring"
+                            android:textSize="20sp" android:textStyle="bold"
+                            android:textColor="@color/white"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:id="@+id/tvUser"
+                            android:text="Belum login"
+                            android:textSize="12sp"
+                            android:textColor="@color/apn_primary_light"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Form login -->
+            <com.google.android.material.card.MaterialCardView android:id="@+id/loginCard"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="@style/APN.Card"
+                android:layout_marginTop="14dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:hint="Email"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etEmail"
+                            android:inputType="textEmailAddress"
+                            android:layout_width="match_parent" android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:hint="Password"
+                        app:endIconMode="password_toggle"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etPass"
+                            android:inputType="textPassword"
+                            android:layout_width="match_parent" android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <Button android:id="@+id/btnLogin" android:text="LOGIN"
+                        style="@style/APN.Button.Primary"
+                        android:layout_marginTop="14dp"
+                        android:layout_width="match_parent" android:layout_height="56dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Grid menu -->
+            <GridLayout android:id="@+id/menuGrid"
+                android:columnCount="2"
+                android:rowCount="3"
+                android:alignmentMode="alignMargins"
+                android:columnOrderPreserved="false"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:visibility="gone">
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardCheckin"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📷" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Check-In" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Foto + kirim kehadiran" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardVisit"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📍" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Titik Kunjungan" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Peta + rute kebun" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardReport"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📋" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Laporan" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Riwayat check-in" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardSync"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary"
+                    android:visibility="gone">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="🔄" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:id="@+id/tvSyncLabel" android:text="Sync" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Kirim antrean offline" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardServer"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="⚙️" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Server" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Atur alamat server" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView android:id="@+id/cardLogout"
+                    android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="6dp"
+                    android:clickable="true" android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    style="@style/APN.Card" app:cardElevation="2dp"
+                    app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
+                    <LinearLayout android:orientation="vertical" android:gravity="center"
+                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="🚪" android:textSize="36sp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Logout" android:textSize="15sp" android:textStyle="bold"
+                            android:textColor="@color/apn_text" android:layout_marginTop="8dp"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        <TextView android:text="Keluar akun" android:textSize="11sp"
+                            android:textColor="@color/apn_text_muted"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </GridLayout>
+
+            <TextView android:id="@+id/tvInfo"
+                android:textSize="12sp"
+                android:textColor="@color/apn_text_muted"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom menu: Home • Kunjungan • [Check-In besar tengah] • Laporan • Setting -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout android:id="@+id/bottomNav"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:visibility="gone">
+
+        <com.google.android.material.bottomappbar.BottomAppBar android:id="@+id/bottomBar"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            app:menu="@menu/bottom_bar" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton android:id="@+id/fabCheckin"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:contentDescription="Check-In"
+            android:src="@android:drawable/ic_menu_camera"
+            app:layout_anchor="@id/bottomBar"
+            app:layout_anchorGravity="center"
+            app:fabCustomSize="72dp"
+            app:maxImageSize="36dp" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+</LinearLayout>

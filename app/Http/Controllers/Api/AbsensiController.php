@@ -1,0 +1,431 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Checkin;
+use App\Models\Kunjungan;
+use App\Models\Signature;
+use App\Services\CheckinService;
+use App\Services\CryptoService;
+use App\Services\ValidationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class AbsensiController extends Controller
+{
+    public function __construct(
+        private CheckinService $checkinService,
+        private ValidationService $validation,
+        private CryptoService $crypto,
+    ) {}
+
+    /**
+     * Secret HMAC khusus aplikasi check-in (diputar per permintaan).
+     * GET /api/absensi/secret (auth:sanctum)
+     */
+    public function secret(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (empty($user->checkin_secret)) {
+            $user->checkin_secret = bin2hex(random_bytes(32));
+            $user->save();
+        }
+        if (! $user->activeCryptoKey) {
+            $this->crypto->generateKeyPairForUser($user);
+        }
+
+        return response()->json(['checkin_secret' => $user->checkin_secret]);
+    }
+
+    /**
+     * Config pengingat check-in untuk notifikasi lokal Android.
+     * GET /api/absensi/reminder-config (auth:sanctum)
+     * HP memuat ini setiap aplikasi dibuka lalu menjadwalkan alarm harian.
+     */
+    public function reminderConfig(): JsonResponse
+    {
+        $cfg = config('absensi.reminder', []);
+        $enabled = filter_var($cfg['enabled'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $times = [];
+
+        if ($enabled) {
+            $start = (int) substr((string) ($cfg['start'] ?? '06:00'), 0, 2);
+            $end = (int) substr((string) ($cfg['end'] ?? '17:00'), 0, 2);
+            $interval = max(1, (int) ($cfg['interval_hours'] ?? 3));
+            $max = max(1, (int) ($cfg['max_per_day'] ?? 3));
+            for ($h = $start, $n = 0; $h <= $end && $n < $max; $h += $interval, $n++) {
+                $times[] = sprintf('%02d:00', $h);
+            }
+        }
+
+        return response()->json([
+            'enabled' => $enabled,
+            'times' => $times,
+            'title' => $cfg['title'] ?? 'Waktunya Check-In',
+            'message' => $cfg['message'] ?? 'Jangan lupa check-in kehadiran hari ini.',
+        ]);
+    }
+
+    /**
+     * Titik kunjungan milik user. GET /api/absensi/kunjungan?date=YYYY-MM-DD
+     */
+    public function kunjungan(Request $request): JsonResponse
+    {
+        $date = $request->input('date', now()->toDateString());
+        $allowed = $request->user()->allowedKebunIds();
+        $rows = Kunjungan::with(['hasObjek', 'hasKebun'])
+            ->where('kunjungan_id_user', $request->user()->id)
+            ->whereDate('kunjungan_tanggal', $date)
+            ->when($allowed !== null, fn ($q) => $q->where(function ($w) use ($allowed) {
+                $w->whereNull('kunjungan_id_kebun')->orWhereIn('kunjungan_id_kebun', $allowed);
+            }))
+            ->orderBy('kunjungan_nama')->get()
+            ->map(fn ($k) => [
+                'id' => $k->kunjungan_id,
+                'name' => $k->kunjungan_nama,
+                'latitude' => (float) $k->kunjungan_lat,
+                'longitude' => (float) $k->kunjungan_lng,
+                'radius_m' => (int) $k->kunjungan_radius_m,
+                'status' => $k->kunjungan_status,
+                'objek' => $k->hasObjek?->objek_nama,
+                'kebun' => $k->hasKebun?->kebun_nama,
+                'date' => $k->kunjungan_tanggal->format('Y-m-d'),
+            ]);
+
+        return response()->json(['date' => $date, 'data' => $rows]);
+    }
+
+    /**
+     * 1 tombol: HP foto + HMAC-sign(payload) -> server verifikasi -> simpan.
+     * POST /api/absensi/checkin (auth:sanctum)
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'photo' => 'required|file|mimes:png,jpg,jpeg|max:10240',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0|max:100000',
+            'address' => 'nullable|string|max:500',
+            'client_timestamp' => 'required|date',
+            'payload' => 'required|string',
+            'hmac' => 'required|string|size:64',
+            'kunjungan_id' => 'nullable|string|exists:kunjungan,kunjungan_id',
+        ]);
+
+        $user = $request->user();
+        $failures = [];
+
+        // --- Verifikasi titik kunjungan: harus dalam radius titik ---
+        $kunjungan = null;
+        $selisihRadius = null;
+        if (! empty($validated['kunjungan_id'])) {
+            $kunjungan = Kunjungan::find($validated['kunjungan_id']);
+            if (! $kunjungan || (int) $kunjungan->kunjungan_id_user !== (int) $user->id) {
+                return response()->json(['message' => 'Titik kunjungan tidak valid'], 422);
+            }
+            $dist = self::distanceM(
+                (float) $kunjungan->kunjungan_lat, (float) $kunjungan->kunjungan_lng,
+                (float) $validated['latitude'], (float) $validated['longitude']);
+            $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
+            if ($dist > (float) $kunjungan->kunjungan_radius_m) {
+                $failures[] = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
+            }
+        }
+
+        // --- Verifikasi polygon kebun (dengan toleransi meter dari tepi) ---
+        // Cakupan: kebun milik titik kunjungan yang dipilih.
+        if ($kunjungan && ! empty($kunjungan->kunjungan_id_kebun)) {
+            $kebun = \App\Models\Kebun::find($kunjungan->kunjungan_id_kebun);
+            if ($kebun && ! empty($kebun->kebun_polygon)) {
+                $tol = (float) (config('absensi.polygon_tolerance_m', 100));
+                $edge = self::distToPolygonM(
+                    (float) $validated['latitude'], (float) $validated['longitude'], (string) $kebun->kebun_polygon
+                );
+                if ($edge === null) {
+                    $failures[] = sprintf('Polygon kebun "%s" rusak/tidak terbaca', $kebun->kebun_nama ?? '-');
+                } elseif ($edge > $tol) {
+                    $failures[] = sprintf(
+                        'Di luar area kebun "%s" (±%.0f m dari batas, toleransi %d m)',
+                        $kebun->kebun_nama ?? '-', $edge, (int) $tol
+                    );
+                }
+            }
+        }
+
+        if (isset($validated['accuracy']) && $validated['accuracy'] > 100) {
+            return response()->json(['message' => 'Akurasi GPS buruk (>100m), ulangi di area terbuka'], 422);
+        }
+
+        $payload = json_decode($validated['payload'], true);
+        $isOffline = ! empty($payload['offline']);
+        $window = $isOffline ? 7 * 24 * 3600 : 300;
+
+        $diff = abs(now()->diffInSeconds(\Carbon\Carbon::parse($validated['client_timestamp'])));
+        if ($diff > $window) {
+            $failures[] = 'Waktu HP tidak sesuai server (selisih > '.($isOffline ? '7 hari' : '5 menit').')';
+        }
+
+        if (! is_array($payload)
+            || (int) ($payload['user_id'] ?? 0) !== (int) $user->id
+            || abs(now()->diffInSeconds(\Carbon\Carbon::parse($payload['timestamp'] ?? '2000-01-01'))) > $window
+        ) {
+            $failures[] = 'Payload check-in tidak valid';
+        } elseif (! $user->checkin_secret) {
+            $failures[] = 'Secret aplikasi hilang, buka ulang menu absensi';
+        } else {
+            $expected = hash_hmac('sha256', $validated['payload'], hex2bin($user->checkin_secret));
+            if (! hash_equals($expected, strtolower($validated['hmac']))) {
+                $failures[] = 'Tanda aplikasi tidak valid (bukan dari aplikasi resmi / data diubah)';
+            }
+        }
+
+        $bytes = file_get_contents($request->file('photo')->getRealPath());
+        if (! hash_equals($payload['image_hash'] ?? '', hash('sha256', $bytes))) {
+            $failures[] = 'Foto berubah selama pengiriman';
+        }
+        if (abs((float) ($payload['lat'] ?? 999) - (float) $validated['latitude']) > 0.0001
+            || abs((float) ($payload['lng'] ?? 999) - (float) $validated['longitude']) > 0.0001) {
+            $failures[] = 'Koordinat berubah selama pengiriman';
+        }
+
+        if (! empty($payload['mock'])) {
+            $failures[] = 'GPS palsu (mock location) terdeteksi di HP';
+        }
+
+        if (isset($payload['net_lat'], $payload['net_lng'])
+            && is_numeric($payload['net_lat']) && is_numeric($payload['net_lng'])) {
+            $netKm = self::distanceM(
+                (float) $validated['latitude'], (float) $validated['longitude'],
+                (float) $payload['net_lat'], (float) $payload['net_lng']) / 1000;
+            if ($netKm > 50) {
+                $failures[] = sprintf('GPS jauh dari lokasi jaringan (±%.0f km) — indikasi fake GPS', $netKm);
+            }
+        }
+
+        $last = Checkin::where('user_id', $user->id)->latest()->first();
+        if ($last && $last->client_timestamp) {
+            $km = self::distanceM((float) $last->latitude, (float) $last->longitude, (float) $validated['latitude'], (float) $validated['longitude']) / 1000;
+            $hours = max(abs(now()->diffInSeconds($last->created_at)) / 3600, 1 / 3600);
+            if ($km / $hours > 250) {
+                $failures[] = sprintf('Perpindahan tidak wajar: %.0f km dalam %.0f mnt', $km, $hours * 60);
+            }
+        }
+
+        $acc = $payload['accuracy'] ?? null;
+        $used = $payload['sat_used_in_fix'] ?? null;
+        if (is_numeric($acc) && (float) $acc < 20 && $used !== null && (int) $used === 0) {
+            $failures[] = 'Akurasi diklaim bagus (<20 m) tapi 0 satelit GNSS terkunci';
+        }
+        $gpsTime = $payload['gps_time'] ?? null;
+        if (is_numeric($gpsTime)) {
+            $gpsDiff = abs(now()->diffInSeconds(\Carbon\Carbon::createFromTimestampMs((int) $gpsTime)));
+            if ($gpsDiff > 600) {
+                $failures[] = 'Jam GPS tidak cocok dengan waktu check-in (>10 menit)';
+            }
+        }
+
+        $locAge = $payload['loc_age_ms'] ?? null;
+        if (is_numeric($locAge) && ((int) $locAge < 0 || (int) $locAge > 60000)) {
+            $failures[] = 'Fix lokasi basi/di-replay (>60 detik)';
+        }
+
+        if (isset($validated['accuracy']) && (float) $validated['accuracy'] < 5) {
+            $recentAcc = Checkin::where('user_id', $user->id)->latest()->limit(3)->pluck('accuracy');
+            if ($recentAcc->count() === 3 && $recentAcc->every(fn ($a) => $a !== null && abs((float) $a - (float) $validated['accuracy']) < 0.01)) {
+                $failures[] = 'Pola akurasi identik berulang (ciri fake GPS)';
+            }
+        }
+
+        if (! empty($payload['motion_still']) && $last && $last->client_timestamp) {
+            $mKm = self::distanceM((float) $last->latitude, (float) $last->longitude, (float) $validated['latitude'], (float) $validated['longitude']) / 1000;
+            $mMin = abs(now()->diffInSeconds($last->created_at)) / 60;
+            if ($mKm > 2 && $mMin < 30) {
+                $failures[] = sprintf('Berpindah %.0f km dalam %.0f mnt tapi sensor gerak diam — indikasi teleportasi', $mKm, $mMin);
+            }
+        }
+
+        $authentic = empty($failures);
+
+        $address = $validated['address'] ?? null;
+        if (empty($address)) {
+            $address = $this->reverseGeocode((float) $validated['latitude'], (float) $validated['longitude']);
+        }
+
+        $origLat = $origLng = null;
+        if (! empty($failures)) {
+            $mock = ! empty($payload['mock']);
+            if ($mock) {
+                if (isset($payload['ip_lat'], $payload['ip_lng']) && is_numeric($payload['ip_lat'])) {
+                    $origLat = (float) $payload['ip_lat'];
+                    $origLng = (float) $payload['ip_lng'];
+                } elseif (isset($payload['net_lat'], $payload['net_lng']) && is_numeric($payload['net_lat'])) {
+                    $origLat = (float) $payload['net_lat'];
+                    $origLng = (float) $payload['net_lng'];
+                }
+            } else {
+                $origLat = (float) $validated['latitude'];
+                $origLng = (float) $validated['longitude'];
+            }
+        }
+        $origAddr = ($origLat !== null) ? $this->reverseGeocode($origLat, $origLng) : null;
+
+        $result = $this->checkinService->signCheckin(
+            $bytes, $user,
+            (float) $validated['latitude'], (float) $validated['longitude'],
+            isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
+            $address,
+            $validated['client_timestamp'] ?? null,
+        );
+
+        $signature = Signature::create([
+            'user_id' => $user->id,
+            'crypto_key_id' => $user->activeCryptoKey->id,
+            'type' => 'checkin',
+            'label' => $authentic ? 'checkin' : 'checkin-fake',
+            'original_filename' => $request->file('photo')->getClientOriginalName(),
+            'content_hash' => $result['content_hash'],
+            'embedded_signature' => $result['embedded_signature'],
+            'expired_at' => null,
+            'mock' => ! empty($payload['mock']),
+            'developer' => ! empty($payload['dev_mode']),
+            'alamat' => $address ? mb_substr($address, 0, 500) : null,
+            'latitude' => (float) $validated['latitude'],
+            'longitude' => (float) $validated['longitude'],
+            'accuracy' => isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
+            'ip_address' => $request->ip(),
+            'client_timestamp' => $validated['client_timestamp'] ?? null,
+        ]);
+
+        $filename = $signature->id.'.jpg';
+        \Illuminate\Support\Facades\Storage::disk('public')->put('checkins/'.$filename, $result['bytes']);
+        $signature->update(['photo' => 'checkins/'.$filename]);
+
+        $checkin = Checkin::create([
+            'signature_id' => $signature->id,
+            'user_id' => $user->id,
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'accuracy' => $validated['accuracy'] ?? null,
+            'selisih_radius_m' => $selisihRadius,
+            'address' => $address,
+            'client_timestamp' => $validated['client_timestamp'] ?? null,
+            'photo_path' => 'checkins/'.$filename,
+            'status' => $authentic ? 'valid' : 'fake',
+            'failure_reason' => $authentic ? null : implode('; ', $failures),
+            'payload_json' => $validated['payload'],
+            'ip_address' => $request->ip(),
+            'is_offline' => $isOffline,
+            'original_latitude' => $origLat,
+            'original_longitude' => $origLng,
+            'original_address' => $origAddr ? mb_substr($origAddr, 0, 500) : null,
+        ]);
+
+        if ($kunjungan && $authentic) {
+            $kunjungan->update(['kunjungan_status' => 'done', 'kunjungan_id_checkin' => $checkin->id]);
+        }
+
+        return response()->json([
+            'checkin_id' => $checkin->id,
+            'signature_id' => $signature->id,
+            'validate_url' => url('/validate/'.$signature->id),
+            'photo_url' => url('storage/checkins/'.$filename),
+            'status' => $authentic ? 'VALID' : 'PALSU',
+            'authentic' => $authentic,
+            'failures' => $failures,
+        ], 201);
+    }
+
+    /** Riwayat check-in karyawan. GET /api/absensi/checkins?from=&to= */
+    public function index(Request $request): JsonResponse
+    {
+        $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+
+        $rows = Checkin::with('hasUser')
+            ->where('user_id', $request->user()->id)
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('to')))
+            ->latest()->paginate(20);
+
+        return response()->json($rows);
+    }
+
+    public static function distanceM(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r = 6371000;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        return 2 * $r * asin(sqrt(sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2));
+    }
+
+    /**
+     * Jarak (meter) dari titik ke polygon GeoJSON.
+     * 0 bila di dalam polygon; jarak ke sisi terdekat bila di luar.
+     * null bila polygon tidak bisa dibaca.
+     */
+    public static function distToPolygonM(float $lat, float $lng, string $polygonJson): ?float
+    {
+        $gj = json_decode($polygonJson, true);
+        if (! is_array($gj)) return null;
+        $geom = ($gj['type'] ?? null) === 'Feature' ? ($gj['geometry'] ?? null) : $gj;
+        $ring = $geom['coordinates'][0] ?? null;
+        if (! is_array($ring) || count($ring) < 4) return null;
+
+        // Ray casting: [lng, lat] per GeoJSON
+        $inside = false;
+        $n = count($ring);
+        for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
+            $xi = (float) $ring[$i][0]; $yi = (float) $ring[$i][1];
+            $xj = (float) $ring[$j][0]; $yj = (float) $ring[$j][1];
+            if ((($yi > $lat) !== ($yj > $lat)) &&
+                ($lng < ($xj - $xi) * ($lat - $yi) / (($yj - $yi) ?: 1e-12) + $xi)) {
+                $inside = ! $inside;
+            }
+        }
+        if ($inside) return 0.0;
+
+        $min = null;
+        for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
+            $d = self::distToSegmentM($lat, $lng, (float) $ring[$j][1], (float) $ring[$j][0], (float) $ring[$i][1], (float) $ring[$i][0]);
+            if ($min === null || $d < $min) $min = $d;
+        }
+
+        return $min;
+    }
+
+    /** Jarak meter dari titik ke segmen garis (aproksimasi equirectangular, akurat untuk skala kecil). */
+    private static function distToSegmentM(float $lat, float $lng, float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $kx = 111320 * cos(deg2rad(($lat1 + $lat2) / 2));
+        $ky = 110540;
+        $px = ($lng - $lng1) * $kx; $py = ($lat - $lat1) * $ky;
+        $dx = ($lng2 - $lng1) * $kx; $dy = ($lat2 - $lat1) * $ky;
+        $len2 = $dx * $dx + $dy * $dy;
+        $t = $len2 > 0 ? max(0, min(1, ($px * $dx + $py * $dy) / $len2)) : 0;
+        $cx = $dx * $t; $cy = $dy * $t;
+
+        return sqrt(($px - $cx) ** 2 + ($py - $cy) ** 2);
+    }
+
+    private function reverseGeocode(float $lat, float $lng): ?string
+    {
+        try {
+            $res = \Illuminate\Support\Facades\Http::withHeaders([
+                    'User-Agent' => config('app.name').'/1.0 (checkin reverse-geocode)',
+                    'Accept-Language' => 'id',
+                ])
+                ->timeout(6)
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'lat' => $lat, 'lon' => $lng, 'format' => 'json',
+                ]);
+            if ($res->successful()) {
+                return $res->json('display_name');
+            }
+        } catch (\Throwable) {
+        }
+
+        return null;
+    }
+}

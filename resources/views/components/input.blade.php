@@ -10,6 +10,9 @@
     if ($type === 'date' && $bound) {
         $bound = \Illuminate\Support\Carbon::parse($bound)->format('Y-m-d');
     }
+    if ($type === 'datetime-local' && $bound) {
+        $bound = \Illuminate\Support\Carbon::parse($bound)->format('Y-m-d\TH:i');
+    }
     $hasError = $errors->has($name);
 @endphp
 <div class="col-span-12 md:col-span-{{ $col }}">

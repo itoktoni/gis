@@ -1,0 +1,29 @@
+// android-app: Native Kotlin (CameraX + GPS + 1 tombol Check-In)
+// Backend: Laravel digitalsignature ini
+// API:
+//   POST /api/auth/login {email,password} -> {access_token}
+//   POST /api/checkin (Bearer) photo, latitude, longitude, accuracy, address, client_timestamp
+//   GET  /api/checkins, GET /api/checkins/{id}
+// Alur anti-palsu: foto + koordinat + waktu dikirim mentah,
+// server yang gambar frame + RSA-sign (CheckinService).
+// Validasi asli/palsu: GET /api/checkins/{id} -> validation.status
+//   VALID = asli dari aplikasi ini, TIDAK VALID = dimodifikasi/palsu.
+
+pluginManagement {
+    repositories {
+        google()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "KaryawanCheckin"
+include(":app")

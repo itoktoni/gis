@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardKebunController;
 use App\Http\Controllers\DisplayController;
+use App\Http\Controllers\ValidateController;
 use App\Http\Controllers\WebsiteSettingController;
 use App\Models\Notification;
 use App\Services\CentrifugoService;
@@ -28,6 +29,8 @@ Route::middleware('auth')->post('/centrifugo/token', function (Request $request)
         'token' => $centrifugo->generateConnectionToken((string) $user->id),
     ]);
 });
+
+Route::get('/validate/{id}', [ValidateController::class, 'show'])->name('validate.byId');
 
 Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
@@ -64,6 +67,10 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
     Route::auto('/lhp-report', 'LhpReportController', ['name' => 'lhp-report', 'only' => ['getTable', 'getPrint', 'getExportExcel']]);
 
     Route::auto('/objek', 'ObjekController', ['name' => 'objek']);
+
+    Route::auto('/kunjungan', 'KunjunganController', ['name' => 'kunjungan']);
+
+    Route::auto('/checkin-report', 'CheckinReportController', ['name' => 'checkin-report', 'only' => ['getTable', 'getShow']]);
 
     Route::auto('/kms/document', 'KmsDocumentController', ['name' => 'kms-document']);
 

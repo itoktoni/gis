@@ -47,6 +47,13 @@ return [
             ],
         ],
         [
+            'label' => 'Absensi',
+            'items' => [
+                ['route' => 'kunjungan.getTable', 'icon' => 'push_pin', 'label' => 'Titik Kunjungan', 'match' => ['kunjungan.*']],
+                ['route' => 'checkin-report.getTable', 'icon' => 'fact_check', 'label' => 'Report Check-In', 'match' => ['checkin-report.*']],
+            ],
+        ],
+        [
             'label' => 'GIS Sawit',
             'items' => [
                 ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun Sawit', 'match' => ['kebun.*']],

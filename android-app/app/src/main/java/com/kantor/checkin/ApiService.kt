@@ -1,0 +1,97 @@
+package com.kantor.checkin
+
+import com.google.gson.annotations.SerializedName
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.http.*
+
+data class LoginReq(val email: String, val password: String)
+data class LoginUser(val id: Int, val name: String, val email: String, val role: String = "")
+data class LoginRes(val access_token: String, val token_type: String? = null, val user: LoginUser? = null, val checkin_secret: String? = null)
+data class SecretRes(val checkin_secret: String)
+data class CheckinRes(
+    val checkin_id: String,
+    val signature_id: String,
+    val validate_url: String,
+    val photo_url: String,
+    val status: String,
+    val authentic: Boolean = true,
+    val failures: List<String> = emptyList()
+)
+
+// Laporan monitoring: hanya waktu + alamat + foto (tanpa status asli/palsu).
+data class CheckinItem(
+    val id: String,
+    val latitude: Double,
+    val longitude: Double,
+    val address: String?,
+    val client_timestamp: String?,
+    val photo_path: String,
+    val created_at: String
+)
+data class PagedCheckins(val data: List<CheckinItem>)
+
+// Titik kunjungan harian (dari master Objek kebun)
+data class VisitPoint(
+    val id: String,
+    val user_id: Int = 0,
+    @SerializedName("date") val visit_date: String = "",
+    val name: String,
+    val latitude: Double,
+    val longitude: Double,
+    val radius_m: Int = 100,
+    val status: String = "pending",
+    val checkin_id: String? = null,
+    val objek: String? = null,
+    val kebun: String? = null
+)
+data class VisitPointsRes(val date: String, val data: List<VisitPoint>)
+
+// Config pengingat check-in dari server (dijadwalkan jadi notifikasi lokal)
+data class ReminderConfig(
+    val enabled: Boolean = true,
+    val times: List<String> = emptyList(),
+    val title: String = "",
+    val message: String = ""
+)
+
+interface ApiService {
+    @POST("api/login")
+    suspend fun login(@Body body: LoginReq): LoginRes
+
+    @GET("api/absensi/secret")
+    suspend fun secret(@Header("Authorization") token: String): SecretRes
+
+    @Multipart
+    @POST("api/absensi/checkin")
+    suspend fun checkin(
+        @Header("Authorization") token: String,
+        @Part photo: MultipartBody.Part,
+        @Part("latitude") lat: RequestBody,
+        @Part("longitude") lng: RequestBody,
+        @Part("accuracy") acc: RequestBody?,
+        @Part("address") addr: RequestBody?,
+        @Part("client_timestamp") ts: RequestBody,
+        @Part("payload") payload: RequestBody,
+        @Part("hmac") hmac: RequestBody,
+        @Part("kunjungan_id") kunjunganId: RequestBody? = null
+    ): CheckinRes
+
+    @GET("api/absensi/checkins")
+    suspend fun checkins(
+        @Header("Authorization") token: String,
+        @Query("from") from: String?,
+        @Query("to") to: String?
+    ): PagedCheckins
+
+    @GET("api/absensi/kunjungan")
+    suspend fun visitPoints(
+        @Header("Authorization") token: String,
+        @Query("date") date: String?
+    ): VisitPointsRes
+
+    @GET("api/absensi/reminder-config")
+    suspend fun reminderConfig(
+        @Header("Authorization") token: String
+    ): ReminderConfig
+}
