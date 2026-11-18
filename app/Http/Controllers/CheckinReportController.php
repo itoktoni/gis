@@ -27,7 +27,8 @@ class CheckinReportController extends Controller
             'userOptions' => User::orderBy('name')->pluck('name', 'id')->all(),
             'statusOptions' => [
                 'valid' => 'Valid',
-                'fake' => 'Fake',
+                'invalid' => 'Di Luar Jangkauan',
+                'fake' => 'Palsu',
             ],
         ];
 

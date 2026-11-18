@@ -27,6 +27,9 @@
             $currentSort = request('sort.0', '');
             $sortField = str_replace(':desc','',str_replace(':asc','',$currentSort));
             $sortDir = str_contains($currentSort, ':desc') ? 'desc' : 'asc';
+            $fmtStatus = function ($s) {
+                return $s === 'invalid' ? 'DI LUAR JANGKAUAN' : ($s === 'fake' ? 'PALSU' : 'VALID');
+            };
             $fmtSelisih = function ($v) {
                 if ($v === null) return '-';
                 $v = (float) $v;
@@ -57,7 +60,7 @@
                     </td>
                     <td>
                         @if($table->photo_path)
-                        <img src="{{ Storage::url($table->photo_path) }}" class="w-12 h-12 rounded-lg object-cover" alt="foto" loading="lazy">
+                        <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-lg object-cover cursor-zoom-in hover:opacity-80" alt="foto" loading="lazy">
                         @else
                         <span class="text-on-surface-variant">-</span>
                         @endif
@@ -65,7 +68,7 @@
                     <td class="whitespace-nowrap">{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
                     <td>{{ $table->hasUser?->name ?? '-' }}</td>
                     <td>
-                        <x-badge :type="$table->status === 'valid' ? 'success' : 'error'">{{ strtoupper($table->status) }}</x-badge>
+                        <x-badge :type="$table->status === 'valid' ? 'success' : ($table->status === 'invalid' ? 'warning' : 'error')">{{ $fmtStatus($table->status) }}</x-badge>
                     </td>
                     <td class="whitespace-nowrap {{ $table->selisih_radius_m !== null && $table->selisih_radius_m > 0 ? 'text-red-600 font-semibold' : '' }}">{{ $fmtSelisih($table->selisih_radius_m) }}</td>
                     <td class="max-w-xs truncate" title="{{ $table->address }}">{{ $table->address ?? '-' }}</td>
@@ -80,13 +83,13 @@
                     <div class="border border-outline-variant rounded-xl p-4 bg-surface-container-lowest shadow-sm" data-id="{{ $table->field_primary }}">
                         <div class="flex items-center gap-3 mb-3">
                             @if($table->photo_path)
-                            <img src="{{ Storage::url($table->photo_path) }}" class="w-12 h-12 rounded-xl object-cover" alt="foto" loading="lazy">
+                            <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-xl object-cover cursor-zoom-in" alt="foto" loading="lazy">
                             @endif
                             <div class="min-w-0">
                                 <p class="text-sm font-bold text-on-surface truncate">{{ $table->hasUser?->name ?? '-' }}</p>
                                 <p class="text-[11px] text-on-surface-variant">{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}</p>
                             </div>
-                            <x-badge class="ml-auto" :type="$table->status === 'valid' ? 'success' : 'error'">{{ strtoupper($table->status) }}</x-badge>
+                            <x-badge class="ml-auto" :type="$table->status === 'valid' ? 'success' : ($table->status === 'invalid' ? 'warning' : 'error')">{{ $fmtStatus($table->status) }}</x-badge>
                         </div>
                         <p class="text-xs text-on-surface-variant line-clamp-2 mb-3">{{ $table->address ?? '-' }}</p>
                         <p class="text-xs mb-3">Selisih radius: <span class="font-semibold {{ $table->selisih_radius_m !== null && $table->selisih_radius_m > 0 ? 'text-red-600' : '' }}">{{ $fmtSelisih($table->selisih_radius_m) }}</span></p>
@@ -110,4 +113,37 @@
     <input type="hidden" class="module" value="{{ Str::beforeLast(request()->route()->uri(), '/') }}">
     <script src="/js/table.js"></script>
     <script>initTable('{{ $sortField }}', '{{ $sortDir }}');</script>
+
+    {{-- Popup foto (lightbox) --}}
+    <div id="photo-popup" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/80 p-4 cursor-zoom-out">
+        <img id="photo-popup-img" src="" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl" alt="foto check-in" />
+    </div>
+    <script>
+        (function () {
+            var popup = document.getElementById('photo-popup');
+            var popupImg = document.getElementById('photo-popup-img');
+            if (!popup || !popupImg) return;
+            document.addEventListener('click', function (e) {
+                var t = e.target.closest ? e.target.closest('.photo-thumb') : null;
+                if (t && t.dataset.full) {
+                    popupImg.src = t.dataset.full;
+                    popup.classList.remove('hidden');
+                    popup.classList.add('flex');
+                    return;
+                }
+                if (!popup.classList.contains('hidden') && e.target.closest('#photo-popup')) {
+                    popup.classList.add('hidden');
+                    popup.classList.remove('flex');
+                    popupImg.src = '';
+                }
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
+                    popup.classList.add('hidden');
+                    popup.classList.remove('flex');
+                    popupImg.src = '';
+                }
+            });
+        })();
+    </script>
 </x-layouts::app>

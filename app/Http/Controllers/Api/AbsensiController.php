@@ -116,6 +116,7 @@ class AbsensiController extends Controller
 
         $user = $request->user();
         $failures = [];
+        $rangeFailures = [];
 
         // --- Verifikasi titik kunjungan: harus dalam radius titik ---
         $kunjungan = null;
@@ -132,7 +133,9 @@ class AbsensiController extends Controller
             $jarakM = round($dist, 1);
             $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
             if ($dist > (float) $kunjungan->kunjungan_radius_m) {
-                $failures[] = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
+                $msg = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
+                $failures[] = $msg;
+                $rangeFailures[] = $msg;
             }
         }
 
@@ -148,10 +151,12 @@ class AbsensiController extends Controller
                 if ($edge === null) {
                     $failures[] = sprintf('Polygon kebun "%s" rusak/tidak terbaca', $kebun->kebun_nama ?? '-');
                 } elseif ($edge > $tol) {
-                    $failures[] = sprintf(
+                    $msg = sprintf(
                         'Di luar area kebun "%s" (±%.0f m dari batas, toleransi %d m)',
                         $kebun->kebun_nama ?? '-', $edge, (int) $tol
                     );
+                    $failures[] = $msg;
+                    $rangeFailures[] = $msg;
                 }
             }
         }
@@ -194,6 +199,10 @@ class AbsensiController extends Controller
 
         if (! empty($payload['mock'])) {
             $failures[] = 'GPS palsu (mock location) terdeteksi di HP';
+        }
+
+        if (! empty($payload['dev_mode'])) {
+            $failures[] = 'Developer options aktif di HP';
         }
 
         if (! empty($payload['rooted'])) {
@@ -251,6 +260,10 @@ class AbsensiController extends Controller
         }
 
         $authentic = empty($failures);
+        // Di luar jangkauan (radius/polygon) = INVALID, bukan PALSU.
+        // PALSU hanya untuk indikasi pemalsuan (mock, root, Xposed, dsb).
+        $rangeOnly = ! $authentic && count($failures) === count($rangeFailures);
+        $status = $authentic ? 'valid' : ($rangeOnly ? 'invalid' : 'fake');
 
         $address = $validated['address'] ?? null;
         if (empty($address)) {
@@ -297,7 +310,7 @@ class AbsensiController extends Controller
             'user_id' => $user->id,
             'crypto_key_id' => $user->activeCryptoKey->id,
             'type' => 'checkin',
-            'label' => $authentic ? 'checkin' : 'checkin-fake',
+            'label' => $authentic ? 'checkin' : ($status === 'invalid' ? 'checkin-invalid' : 'checkin-fake'),
             'original_filename' => $request->file('photo')->getClientOriginalName(),
             'content_hash' => $result['content_hash'],
             'embedded_signature' => $result['embedded_signature'],
@@ -327,7 +340,7 @@ class AbsensiController extends Controller
             'address' => $address,
             'client_timestamp' => $validated['client_timestamp'] ?? null,
             'photo_path' => 'checkins/'.$filename,
-            'status' => $authentic ? 'valid' : 'fake',
+            'status' => $status,
             'failure_reason' => $authentic ? null : implode('; ', $failures),
             'payload_json' => $validated['payload'],
             'ip_address' => $request->ip(),
@@ -352,7 +365,7 @@ class AbsensiController extends Controller
             'signature_id' => $signature->id,
             'validate_url' => url('/validate/'.$signature->id),
             'photo_url' => url('storage/checkins/'.$filename),
-            'status' => $authentic ? 'VALID' : 'PALSU',
+            'status' => $status === 'invalid' ? 'DI LUAR JANGKAUAN' : ($status === 'fake' ? 'PALSU' : 'VALID'),
             'authentic' => $authentic,
             'failures' => $failures,
         ], 201);
