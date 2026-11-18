@@ -47,6 +47,8 @@
             }
         </script>
 
+        <br>
+
         {{-- Table --}}
         @php
             $currentSort = request('sort.0', '');
@@ -64,7 +66,7 @@
 
         <x-table>
             <x-slot:head>
-                <th>Actions</th>
+                <th>Act</th>
                 <th>Foto</th>
                 <x-table-sort field="created_at" label="Tanggal" :sortField="$sortField" :sortDir="$sortDir" />
                 <th>User</th>
@@ -76,7 +78,7 @@
             <x-slot:body>
                 @foreach($data as $table)
                 <tr class="report-row cursor-pointer hover:bg-surface-container" data-photo="{{ $table->photo_path ? Storage::url($table->photo_path) : '' }}" data-address="{{ $table->address ?? '-' }}">
-                    <td class="w-24 whitespace-nowrap" onclick="event.stopPropagation()">
+                    <td class="w-15 whitespace-nowrap" onclick="event.stopPropagation()">
                         <div class="flex gap-2">
                             <a href="{{ moduleRoute('getShow', ['id' => $table->field_primary]) }}" wire:navigate class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Detail">
                                 <span class="material-symbols-outlined text-lg">visibility</span>

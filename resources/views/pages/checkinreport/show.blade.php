@@ -70,6 +70,22 @@
     </div>
     @endif
 
+    {{-- Peta full di paling atas --}}
+    <x-card :label="'Peta Lokasi'" :icon="'map'">
+        <div class="col-span-12">
+            <div id="checkin-map" style="height: 420px; border-radius: 12px;" class="border border-outline-variant"></div>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+                <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600 align-middle"></span> Titik check-in</span>
+                @if($kunjungan && $kunjungan->kunjungan_lat && $kunjungan->kunjungan_lng)
+                <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-600 align-middle"></span> Titik kunjungan + radius</span>
+                @endif
+                @if($model->original_latitude && $model->original_longitude)
+                <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 align-middle"></span> Dugaan lokasi asli</span>
+                @endif
+            </div>
+        </div>
+    </x-card>
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div>
             <x-card :label="'Foto Check-In'" :icon="'photo_camera'">
@@ -84,21 +100,6 @@
                 @else
                 <p class="col-span-12 text-sm text-on-surface-variant">Tidak ada foto.</p>
                 @endif
-            </x-card>
-
-            <x-card :label="'Peta Lokasi'" :icon="'map'">
-                <div class="col-span-12">
-                    <div id="checkin-map" style="height: 320px; border-radius: 12px;" class="border border-outline-variant"></div>
-                    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant">
-                        <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-600 align-middle"></span> Titik check-in</span>
-                        @if($kunjungan && $kunjungan->kunjungan_lat && $kunjungan->kunjungan_lng)
-                        <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-600 align-middle"></span> Titik kunjungan + radius</span>
-                        @endif
-                        @if($model->original_latitude && $model->original_longitude)
-                        <span><span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 align-middle"></span> Dugaan lokasi asli</span>
-                        @endif
-                    </div>
-                </div>
             </x-card>
         </div>
 
@@ -138,7 +139,23 @@
                 </dl>
             </x-card>
 
-            <x-card :label="'Sinyal Keaslian dari HP'" :icon="'radar'">
+            <x-card :label="'Detail Teknis'" :icon="'terminal'">
+                <dl class="col-span-12 grid grid-cols-3 gap-y-2 text-sm">
+                    <dt class="text-on-surface-variant">IP pengirim</dt><dd class="col-span-2 font-mono text-[13px]">{{ $model->ip_address ?? '-' }}</dd>
+                    <dt class="text-on-surface-variant">Signature</dt><dd class="col-span-2 font-mono text-[13px] break-all">{{ $model->signature_id ?? '-' }}</dd>
+                    <dt class="text-on-surface-variant">Content hash</dt><dd class="col-span-2 font-mono text-[13px] break-all">{{ $model->content_hash ?? $model->hasSignature?->content_hash ?? '-' }}</dd>
+                </dl>
+                @if(!empty($payload))
+                <details class="col-span-12 mt-2 text-sm">
+                    <summary class="cursor-pointer text-primary hover:underline">Payload mentah dari HP</summary>
+                    <pre class="mt-2 p-3 rounded-lg bg-surface-container text-xs overflow-x-auto">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                </details>
+                @endif
+            </x-card>
+        </div>
+    </div>
+
+    <x-card :label="'Sinyal Keaslian dari HP'" :icon="'radar'">
                 <div class="col-span-12 divide-y divide-outline-variant/60">
                     @foreach($signals as $s)
                     <div class="flex items-start gap-2 py-2 text-sm">
@@ -181,22 +198,6 @@
                 </div>
             </x-card>
             @endif
-
-            <x-card :label="'Detail Teknis'" :icon="'terminal'">
-                <dl class="col-span-12 grid grid-cols-3 gap-y-2 text-sm">
-                    <dt class="text-on-surface-variant">IP pengirim</dt><dd class="col-span-2 font-mono text-[13px]">{{ $model->ip_address ?? '-' }}</dd>
-                    <dt class="text-on-surface-variant">Signature</dt><dd class="col-span-2 font-mono text-[13px] break-all">{{ $model->signature_id ?? '-' }}</dd>
-                    <dt class="text-on-surface-variant">Content hash</dt><dd class="col-span-2 font-mono text-[13px] break-all">{{ $model->content_hash ?? $model->hasSignature?->content_hash ?? '-' }}</dd>
-                </dl>
-                @if(!empty($payload))
-                <details class="col-span-12 mt-2 text-sm">
-                    <summary class="cursor-pointer text-primary hover:underline">Payload mentah dari HP</summary>
-                    <pre class="mt-2 p-3 rounded-lg bg-surface-container text-xs overflow-x-auto">{{ json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
-                </details>
-                @endif
-            </x-card>
-        </div>
-    </div>
 
     @push('scripts')
     <script>
