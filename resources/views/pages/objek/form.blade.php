@@ -92,6 +92,16 @@
 
             map.on('click', function (e) { setCoords(e.latlng.lat, e.latlng.lng); });
 
+            // Pilih kebun -> isi lat/lng dari titik tengah kebun bila masih kosong
+            var kebunData = @json($kebunGeo ?? []);
+            var kebunSelect = document.querySelector('[name="objek_id_kebun"]');
+            if (kebunSelect) kebunSelect.addEventListener('change', function () {
+                var row = kebunData[this.value];
+                if (!row || row.lat === null || row.lng === null) return;
+                if ((latInput && latInput.value) || (lngInput && lngInput.value)) return;
+                setCoords(parseFloat(row.lat), parseFloat(row.lng));
+            });
+
             // --- Pencarian alamat (Nominatim OSM, batasi Indonesia) ---
             var searchInput = document.getElementById('objek-search');
             var searchBtn = document.getElementById('objek-search-btn');

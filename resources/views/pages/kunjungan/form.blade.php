@@ -26,7 +26,9 @@
     <script>
         (function () {
             var objekData = @json($objekGeo ?? []);
+            var kebunData = @json($kebunGeo ?? []);
             var objekSelect = document.querySelector('[name="kunjungan_id_objek"]');
+            var kebunSelect = document.querySelector('[name="kunjungan_id_kebun"]');
             var namaInput = document.querySelector('[name="kunjungan_nama"]');
             var latInput = document.querySelector('[name="kunjungan_lat"]');
             var lngInput = document.querySelector('[name="kunjungan_lng"]');
@@ -37,6 +39,13 @@
                 if (namaInput && !namaInput.value) namaInput.value = row.nama ?? '';
                 if (latInput && row.lat !== null) latInput.value = row.lat;
                 if (lngInput && row.lng !== null) lngInput.value = row.lng;
+            });
+            // Pilih kebun -> isi lat/lng dari titik tengah kebun bila masih kosong
+            if (kebunSelect) kebunSelect.addEventListener('change', function () {
+                var row = kebunData[this.value];
+                if (!row) return;
+                if (latInput && !latInput.value && row.lat !== null) latInput.value = row.lat;
+                if (lngInput && !lngInput.value && row.lng !== null) lngInput.value = row.lng;
             });
         })();
     </script>

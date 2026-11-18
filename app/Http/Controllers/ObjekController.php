@@ -15,6 +15,7 @@ class ObjekController extends Controller
         $default = [
             'model' => $this->model,
             'kebunOptions' => Kebun::getOptions(),
+            'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_lat as lat', 'kebun_lng as lng')->get()->keyBy('id'),
             'jenisOptions' => [
                 'pos_pantau' => 'POS Pemantauan',
                 'gudang' => 'Gudang',
