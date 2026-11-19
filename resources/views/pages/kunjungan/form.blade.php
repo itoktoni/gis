@@ -63,13 +63,27 @@
                 if (latInput && row.lat !== null) latInput.value = row.lat;
                 if (lngInput && row.lng !== null) lngInput.value = row.lng;
             });
-            // Pilih kebun -> isi nama + lat/lng bila masih kosong
+            // Pilih kebun -> isi nama + lat/lng bila masih kosong + polygon area.
             if (kebunSelect) kebunSelect.addEventListener('change', function () {
                 var row = kebunData[this.value];
                 if (!row) return;
                 if (namaInput && !namaInput.value && row.nama) namaInput.value = 'Kunjungan ' + row.nama;
                 if (latInput && !latInput.value && row.lat !== null) latInput.value = row.lat;
                 if (lngInput && !lngInput.value && row.lng !== null) lngInput.value = row.lng;
+                var polyArea = document.getElementById('kunjungan_polygon');
+                if (polyArea && row.polygon) {
+                    // Isi otomatis bila kosong atau masih berisi polygon auto sebelumnya.
+                    if (!polyArea.value || polyArea.dataset.auto === '1') {
+                        polyArea.value = row.polygon;
+                        polyArea.dataset.auto = '1';
+                    }
+                }
+            });
+            // Ketikan manual = bukan auto lagi (ganti kebun tak menimpa).
+            var polyAreaInit = document.getElementById('kunjungan_polygon');
+            if (polyAreaInit) polyAreaInit.addEventListener('input', function () {
+                this.dataset.auto = this.value ? '0' : '1';
+                if (!this.value) this.dataset.auto = '1';
             });
         })();
         // File .geojson -> tempel ke textarea polygon.

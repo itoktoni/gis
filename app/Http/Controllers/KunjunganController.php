@@ -30,7 +30,7 @@ class KunjunganController extends Controller
             'model' => $this->model,
             'userOptions' => User::getOptions(),
             'kebunOptions' => Kebun::getOptions(),
-            'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng')->get()->keyBy('id'),
+            'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng', 'kebun_polygon as polygon')->get()->keyBy('id'),
             'objekOptions' => Objek::getOptions(),
             'objekGeo' => Objek::select('objek_id as id', 'objek_nama as nama', 'objek_lat as lat', 'objek_lng as lng')->get()->keyBy('id'),
             'statusOptions' => [
