@@ -54,6 +54,18 @@ class FonnteService
         return $this->send($groupId, $message);
     }
 
+    /** Grup WA untuk rekap absen (default ikut grup LHP bila ID khusus belum diisi). */
+    public function sendToAbsenGroup(string $message): array
+    {
+        $groupId = (string) (config('fonnte.absen_group_id') ?: config('fonnte.group_id'));
+
+        if ($groupId === '') {
+            throw new RuntimeException('FONNTE_ABSEN_GROUP_ID (atau FONNTE_LHP_GROUP_ID) belum diisi di .env.');
+        }
+
+        return $this->send($groupId, $message);
+    }
+
     /**
      * Refresh daftar grup di sisi Fonnte. Panggil sekali saat join grup baru.
      *
