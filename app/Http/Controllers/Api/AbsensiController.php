@@ -138,7 +138,7 @@ class AbsensiController extends Controller
                 'name' => $k->kunjungan_nama,
                 'latitude' => (float) $k->kunjungan_lat,
                 'longitude' => (float) $k->kunjungan_lng,
-                'radius_m' => (int) $kunjungan->kunjungan_radius_m,
+                'radius_m' => (int) $k->kunjungan_radius_m,
                 'status' => $k->kunjungan_status ?? 'pending',
                 'objek' => $k->hasObjek?->objek_nama,
                 'kebun' => $k->hasKebun?->kebun_nama,
