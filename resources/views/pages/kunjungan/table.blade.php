@@ -56,7 +56,7 @@
                             </div>
                             <div>
                                 <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">User</p>
-                                <p class="text-xs font-medium text-on-surface">{{ $table->hasUser?->name ?? '-' }}</p>
+                                <p class="text-xs font-medium text-on-surface">{{ $table->hasUsers->pluck('name')->merge([$table->hasUser?->name])->filter()->unique()->join(', ') ?: '-' }}</p>
                             </div>
                             <div>
                                 <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Status</p>

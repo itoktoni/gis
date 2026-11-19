@@ -120,7 +120,11 @@ class AbsensiController extends Controller
         $date = $request->input('date', now()->toDateString());
         $allowed = $request->user()->allowedKebunIds();
         $rows = Kunjungan::with(['hasObjek', 'hasKebun'])
-            ->where('kunjungan_id_user', $request->user()->id)
+            ->where(function ($q) use ($request) {
+                // Pemilik (kolom lama) ATAU anggota pivot kunjungan_user.
+                $q->where('kunjungan_id_user', $request->user()->id)
+                    ->orWhereHas('hasUsers', fn ($qq) => $qq->where('users.id', $request->user()->id));
+            })
             ->where(function ($q) use ($date) {
                 // Tanpa tanggal = berlaku selamanya, selalu ikut
                 $q->whereDate('kunjungan_tanggal', $date)->orWhereNull('kunjungan_tanggal');
@@ -176,7 +180,7 @@ class AbsensiController extends Controller
         $jarakM = null;
         if (! empty($validated['kunjungan_id'])) {
             $kunjungan = Kunjungan::find($validated['kunjungan_id']);
-            if (! $kunjungan || (int) $kunjungan->kunjungan_id_user !== (int) $user->id) {
+            if (! $kunjungan || ! in_array((int) $user->id, $kunjungan->assignedUserIds(), true)) {
                 return response()->json(['message' => 'Titik kunjungan tidak valid'], 422);
             }
             $dist = self::distanceM(

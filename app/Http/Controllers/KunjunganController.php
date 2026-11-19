@@ -44,7 +44,7 @@ class KunjunganController extends Controller
 
     protected function baseQuery()
     {
-        return $this->model->with(['hasUser', 'hasObjek', 'hasKebun']);
+        return $this->model->with(['hasUser', 'hasUsers', 'hasObjek', 'hasKebun']);
     }
 
     protected function applyDefaultOrder($query): void
@@ -57,63 +57,58 @@ class KunjunganController extends Controller
     public function postCreate(GeneralRequest $request)
     {
         $this->mergeDefaults($request);
+        $this->mergePrimaryUser($request);
         $this->assertKebunAllowed($request);
 
-        $response = $this->traitPostCreate($request);
-        $this->syncUsers($request);
+        $payload = \App\Actions\CreateAction::run($request, $this->model);
+        if (! empty($payload['status']) && ! empty($payload['data'])) {
+            $this->syncUsers($payload['data'], $request);
+        }
 
-        return $response;
+        return $this->response($payload);
     }
 
     public function postUpdate(GeneralRequest $request, $id)
     {
         $this->mergeDefaults($request);
+        $this->mergePrimaryUser($request);
         $this->assertKebunAllowed($request);
 
-        $response = $this->traitPostUpdate($request, $id);
-        $this->syncUsers($request, $id);
+        $payload = \App\Actions\UpdateAction::run($request, $id, $this->model);
+        if (! empty($payload['status']) && ! empty($payload['data'])) {
+            $this->syncUsers($payload['data'], $request);
+        }
 
-        return $response;
+        return $this->response($payload);
     }
 
     /**
-     * Sinkron pivot kunjungan_user dari pilihan multi-user.
-     * kunjungan_id_user (kolom lama) diisi anggota pertama untuk kompatibilitas
-     * API HP lama + validasi required.
+     * Multi-user: user_ids[] (bisa banyak). Anggota pertama menjadi
+     * kunjungan_id_user (kolom lama: kompatibilitas + validasi required).
      */
-    private function syncUsers(GeneralRequest $request, $id = null): void
+    private function mergePrimaryUser(GeneralRequest $request): void
     {
         $ids = array_values(array_unique(array_map(
             'intval',
             array_filter((array) $request->input('user_ids', []))
-        ));
-        if ($ids === []) {
-            $first = $request->input('kunjungan_id_user');
-            if ($first) {
-                $ids = [(int) $first];
-            }
+        )));
+        if ($ids !== []) {
+            $request->merge(['kunjungan_id_user' => $ids[0]]);
         }
-        if ($ids === []) {
-            return;
-        }
+    }
 
-        $rowId = $id ?? $this->model->latest('kunjungan_id')->value('kunjungan_id');
-        // Data baru: ambil id dari record yang baru dibuat (pemilik = anggota pertama).
-        if (! $id) {
-            $row = $this->model->where('kunjungan_id_user', $ids[0])->latest()->first();
-            $rowId = $row?->kunjungan_id ?? $rowId;
+    /** Sinkron pivot kunjungan_user dari pilihan multi-user (fallback: pemilik). */
+    private function syncUsers(Kunjungan $row, GeneralRequest $request): void
+    {
+        $ids = array_values(array_unique(array_map(
+            'intval',
+            array_filter((array) $request->input('user_ids', []))
+        )));
+        if ($ids === [] && $row->kunjungan_id_user) {
+            $ids = [(int) $row->kunjungan_id_user];
         }
-        if (! $rowId) {
-            return;
-        }
-
-        $k = $this->model->find($rowId);
-        if ($k) {
-            $k->hasUsers()->sync($ids);
-            // Pastikan pemilik termasuk anggota + kolom lama valid.
-            if ((int) $k->kunjungan_id_user !== $ids[0]) {
-                $k->update(['kunjungan_id_user' => $ids[0]]);
-            }
+        if ($ids !== []) {
+            $row->hasUsers()->sync($ids);
         }
     }
 
@@ -129,25 +124,32 @@ class KunjunganController extends Controller
     /**
      * Tolak titik di kebun yang tidak boleh diakses user tersebut.
      * User tanpa mapping (allowedKebunIds null) boleh ke semua kebun.
+     * Dicek untuk SEMUA user terpilih (multi-user).
      */
     private function assertKebunAllowed(GeneralRequest $request): void
     {
-        $user = User::find($request->input('kunjungan_id_user'));
-        if (! $user) {
-            return;
-        }
-        $allowed = $user->allowedKebunIds();
-        if ($allowed === null) {
-            return;
-        }
-        $kebunId = $request->input('kunjungan_id_kebun');
-        if (! $kebunId && $request->filled('kunjungan_id_objek')) {
-            $kebunId = Objek::where('objek_id', $request->input('kunjungan_id_objek'))->value('objek_id_kebun');
-        }
-        if ($kebunId && ! in_array((int) $kebunId, $allowed, true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'kunjungan_id_kebun' => 'User ini tidak memiliki akses ke kebun tersebut (cek mapping user-kebun).',
-            ]);
+        $ids = array_values(array_unique(array_map(
+            'intval',
+            array_filter((array) $request->input('user_ids', [$request->input('kunjungan_id_user')]))
+        )));
+        foreach ($ids as $uid) {
+            $user = User::find($uid);
+            if (! $user) {
+                continue;
+            }
+            $allowed = $user->allowedKebunIds();
+            if ($allowed === null) {
+                continue;
+            }
+            $kebunId = $request->input('kunjungan_id_kebun');
+            if (! $kebunId && $request->filled('kunjungan_id_objek')) {
+                $kebunId = Objek::where('objek_id', $request->input('kunjungan_id_objek'))->value('objek_id_kebun');
+            }
+            if ($kebunId && ! in_array((int) $kebunId, $allowed, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'kunjungan_id_kebun' => "User {$user->name} tidak memiliki akses ke kebun tersebut (cek mapping user-kebun).",
+                ]);
+            }
         }
     }
 
