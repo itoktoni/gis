@@ -33,6 +33,10 @@ class SettingActivity : AppCompatActivity() {
         val tvReminderInfo = findViewById<TextView>(R.id.tvReminderInfo)
         etReminder.setText(p.getString(ReminderScheduler.PREF_INTERVAL, "") ?: "")
         fun refreshReminderInfo() {
+            if (ReminderScheduler.isDisabled(p)) {
+                tvReminderInfo.text = "Pengingat MATI di HP ini (server tetap jalan untuk HP lain)"
+                return
+            }
             val token = p.getString("auth_token", "") ?: ""
             lifecycleScope.launch {
                 try {
@@ -52,6 +56,24 @@ class SettingActivity : AppCompatActivity() {
             }
         }
         refreshReminderInfo()
+        val cbDisable = findViewById<android.widget.CheckBox>(R.id.cbDisableReminder)
+        cbDisable.isChecked = ReminderScheduler.isDisabled(p)
+        etReminder.isEnabled = !cbDisable.isChecked
+        findViewById<Button>(R.id.btnSaveReminder).isEnabled = !cbDisable.isChecked
+        cbDisable.setOnCheckedChangeListener { _, checked ->
+            p.edit().putBoolean(ReminderScheduler.PREF_DISABLED, checked).apply()
+            etReminder.isEnabled = !checked
+            findViewById<Button>(R.id.btnSaveReminder).isEnabled = !checked
+            if (checked) {
+                ReminderScheduler.cancelAll(this)
+                tvReminderInfo.text = "Pengingat MATI di HP ini (server tetap jalan untuk HP lain)"
+                Toast.makeText(this, "Pengingat dimatikan di HP ini", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Pengingat dinyalakan — memuat jadwal...", Toast.LENGTH_LONG).show()
+                refreshReminderInfo()
+                ReminderScheduler.refresh(this)
+            }
+        }
         findViewById<Button>(R.id.btnSaveReminder).setOnClickListener {
             val v = etReminder.text.toString().trim().replace(',', '.')
             val d = v.toDoubleOrNull()

@@ -15,7 +15,7 @@
                 <x-input col="4" name="kunjungan_lat" label="Latitude" type="number" step="any" />
                 <x-input col="4" name="kunjungan_lng" label="Longitude" type="number" step="any" />
                 <x-input col="4" name="kunjungan_radius_m" label="Radius (m)" type="number" />
-                <x-input col="6" name="kunjungan_status" label="Status" readonly disabled :value="$model?->kunjungan_status ?? 'pending'" helper="Status dikelola aplikasi Android (pending/done)." />
+                <x-select col="6" name="kunjungan_status" label="Status" :options="$statusOptions" placeholder="-- Null --" helper="Null = belum ditentukan. Done dikunci di HP, Pending bisa check-in (titik permanen)." />
 
                 @if(isset($model) && $model->exists && ($model->kunjungan_status === 'done' || $model->kunjungan_id_checkin))
                 <div class="col-span-12">

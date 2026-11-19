@@ -96,6 +96,12 @@
                         android:layout_marginTop="6dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
 
+                    <CheckBox android:id="@+id/cbDisableReminder"
+                        android:text="Matikan pengingat di HP ini"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
                     <EditText android:id="@+id/etReminderInterval"
                         android:hint="Interval jam (cth: 3, 1, 0.5, 0.2)"
                         android:textSize="15sp" android:singleLine="true"

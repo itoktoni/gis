@@ -57,6 +57,7 @@ class Kunjungan extends BaseModel
             'kunjungan_lat' => 'required|numeric|between:-90,90',
             'kunjungan_lng' => 'required|numeric|between:-180,180',
             'kunjungan_radius_m' => 'nullable|integer|min:10|max:5000',
+            'kunjungan_status' => 'nullable|string|in:pending,done',
         ];
     }
 

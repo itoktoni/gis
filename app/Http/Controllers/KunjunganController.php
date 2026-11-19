@@ -109,7 +109,10 @@ class KunjunganController extends Controller
         if (! $request->filled('kunjungan_radius_m')) {
             $request->merge(['kunjungan_radius_m' => 100]);
         }
-        if (! $request->filled('kunjungan_status')) {
+        // Pilihan "-- Null --" (string kosong) disimpan sebagai NULL, bukan pending.
+        if ($request->input('kunjungan_status') === '') {
+            $request->merge(['kunjungan_status' => null]);
+        } elseif (! $request->exists('kunjungan_status')) {
             $request->merge(['kunjungan_status' => 'pending']);
         }
     }

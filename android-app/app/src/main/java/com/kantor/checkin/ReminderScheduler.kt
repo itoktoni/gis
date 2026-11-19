@@ -17,6 +17,11 @@ import java.util.Calendar
 object ReminderScheduler {
     private const val PREF_TIMES = "reminder_times"
     const val PREF_INTERVAL = "reminder_interval_override"
+    const val PREF_DISABLED = "reminder_disabled"
+
+    /** Pengingat dimatikan di HP ini (per perangkat, tidak ikut server). */
+    fun isDisabled(p: android.content.SharedPreferences): Boolean =
+        p.getBoolean(PREF_DISABLED, false)
 
     /** Interval efektif: override HP bila valid, else server. */
     fun effectiveInterval(p: android.content.SharedPreferences, server: Double): Double {
@@ -52,6 +57,11 @@ object ReminderScheduler {
     fun refresh(ctx: Context) {
         val app = ctx.applicationContext
         val p = app.getSharedPreferences("cfg", Context.MODE_PRIVATE)
+        // Dimatikan di HP ini → hapus semua jadwal lokal, jangan muat server.
+        if (isDisabled(p)) {
+            cancelAll(app)
+            return
+        }
         val token = p.getString("auth_token", "") ?: ""
         if (token.isEmpty()) return
         CoroutineScope(Dispatchers.IO).launch {
@@ -77,6 +87,23 @@ object ReminderScheduler {
                 if (saved.isNotEmpty()) schedule(app, ReminderConfig(enabled = true, times = saved, title = "Waktunya Check-In", message = "Jangan lupa check-in kehadiran hari ini."))
             }
         }
+    }
+
+    /** Hapus semua alarm pengingat lokal. */
+    fun cancelAll(ctx: Context) {
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        for (i in 0 until 96) am.cancel(pending(ctx, i, null, null))
+        // Snooze yang tertunda ikut dibatalkan.
+        try {
+            val it = Intent(ctx, ReminderReceiver::class.java).apply {
+                action = "com.kantor.checkin.REMIND_SNOOZE"
+            }
+            val pi = PendingIntent.getBroadcast(
+                ctx, 999, it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            am.cancel(pi)
+        } catch (_: Exception) { }
     }
 
     fun schedule(ctx: Context, cfg: ReminderConfig) {
