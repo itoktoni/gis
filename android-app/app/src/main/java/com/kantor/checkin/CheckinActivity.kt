@@ -61,6 +61,12 @@ class CheckinActivity : AppCompatActivity() {
     private var lastAddr: String? = null
     private var lastAddrAt: Long = 0
 
+    // Titik kunjungan (bila dibuka dari daftar titik): untuk info jangkauan live.
+    private var vpLat: Double? = null
+    private var vpLng: Double? = null
+    private var vpRadius: Int = 0
+    private var locDialogShown = false
+
     // Metadata GNSS (sinyal RF asli, tidak ikut dipalsukan mock app)
     private var satCount: Int? = null
     private var satUsedInFix: Int? = null
@@ -134,6 +140,11 @@ class CheckinActivity : AppCompatActivity() {
         intent.getStringExtra("kunjungan_name")?.takeIf { it.isNotEmpty() }?.let {
             tvStatus.text = "📍 Titik: $it"
         }
+        if (intent.hasExtra("kunjungan_lat") && intent.hasExtra("kunjungan_lng")) {
+            vpLat = intent.getDoubleExtra("kunjungan_lat", 0.0)
+            vpLng = intent.getDoubleExtra("kunjungan_lng", 0.0)
+            vpRadius = intent.getIntExtra("kunjungan_radius", 100)
+        }
     }
 
     override fun onResume() {
@@ -141,6 +152,7 @@ class CheckinActivity : AppCompatActivity() {
         stampHandler.removeCallbacks(stampTick)
         stampHandler.post(stampTick)
         if (orientationListener.canDetectOrientation()) orientationListener.enable()
+        checkLocationEnabled()
         val threat = mockLocationThreat()
         val devOn = isDevModeOn()
         // Tanpa popup: tampilkan label info + kunci tombol (tombol back tetap bebas)
@@ -269,7 +281,61 @@ class CheckinActivity : AppCompatActivity() {
         }
     }
 
+    /** Peringatan bila layanan lokasi HP mati + info jangkauan titik live. */
+    private fun checkLocationEnabled() {
+        if (locDialogShown) return
+        val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val on = try {
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        } catch (_: Exception) { true }
+        if (!on) {
+            locDialogShown = true
+            AlertDialog.Builder(this)
+                .setTitle("Lokasi HP mati")
+                .setMessage("Layanan lokasi (GPS) belum aktif, koordinat tidak akan didapat. Nyalakan dulu supaya status jangkauan muncul.")
+                .setPositiveButton("Nyalakan") { _, _ ->
+                    try { startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+                    catch (_: Exception) { }
+                    locDialogShown = false
+                }
+                .setNegativeButton("Nanti") { _, _ -> locDialogShown = false }
+                .show()
+        }
+    }
+
+    /** Info jarak ke titik kunjungan, diperbarui tiap detik bersama stempel. */
+    private fun updateRange() {
+        val tv = findViewById<TextView>(R.id.tvRange) ?: return
+        val tLat = vpLat
+        val tLng = vpLng
+        if (tLat == null || tLng == null) {
+            tv.visibility = android.view.View.GONE
+            return
+        }
+        tv.visibility = android.view.View.VISIBLE
+        val loc = lastLoc
+        if (loc == null) {
+            tv.text = "📡 Mencari GPS — status jangkauan belum diketahui"
+            tv.setBackgroundColor(0xFFE0E0E0.toInt())
+            return
+        }
+        val out = FloatArray(1)
+        android.location.Location.distanceBetween(loc.latitude, loc.longitude, tLat, tLng, out)
+        val d = out[0]
+        if (d <= vpRadius) {
+            tv.text = "✅ Dalam jangkauan titik (±%.0f m / batas %d m)".format(d, vpRadius)
+            tv.setBackgroundColor(0xFFE6F4EA.toInt())
+            tv.setTextColor(0xFF1B7A3D.toInt())
+        } else {
+            tv.text = "⚠️ Di luar titik (±%.0f m, batas %d m) — mendekat dulu".format(d, vpRadius)
+            tv.setBackgroundColor(0xFFFDECEA.toInt())
+            tv.setTextColor(0xFFB3261E.toInt())
+        }
+    }
+
     private fun updateStamp() {
+        updateRange()
         val wib = java.util.TimeZone.getTimeZone("Asia/Jakarta")
         val time = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale("in", "ID")).apply { timeZone = wib }.format(Date())
         val loc = lastLoc
@@ -578,10 +644,20 @@ class CheckinActivity : AppCompatActivity() {
             c.resume(null)
             return@suspendCancellableCoroutine
         }
-        LocationServices.getFusedLocationProviderClient(this)
-            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { c.resume(it) }
-            .addOnFailureListener { c.resumeWithException(it) }
+        try {
+            // getCurrentLocation() bisa null di sebagian HP/ROM — jangan dipanggil langsung.
+            val task = LocationServices.getFusedLocationProviderClient(this)
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            if (task == null) {
+                c.resume(null)
+                return@suspendCancellableCoroutine
+            }
+            task
+                .addOnSuccessListener { c.resume(it) }
+                .addOnFailureListener { c.resumeWithException(it) }
+        } catch (e: Exception) {
+            if (!c.isCompleted) c.resumeWithException(e)
+        }
     }
 
     /** Ada koneksi internet (WiFi/seluler) atau tidak. */

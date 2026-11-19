@@ -59,7 +59,10 @@ class KunjunganController extends Controller
         $this->mergeDefaults($request);
         $this->assertKebunAllowed($request);
 
-        return $this->traitPostCreate($request);
+        $response = $this->traitPostCreate($request);
+        $this->syncUsers($request);
+
+        return $response;
     }
 
     public function postUpdate(GeneralRequest $request, $id)
@@ -67,7 +70,51 @@ class KunjunganController extends Controller
         $this->mergeDefaults($request);
         $this->assertKebunAllowed($request);
 
-        return $this->traitPostUpdate($request, $id);
+        $response = $this->traitPostUpdate($request, $id);
+        $this->syncUsers($request, $id);
+
+        return $response;
+    }
+
+    /**
+     * Sinkron pivot kunjungan_user dari pilihan multi-user.
+     * kunjungan_id_user (kolom lama) diisi anggota pertama untuk kompatibilitas
+     * API HP lama + validasi required.
+     */
+    private function syncUsers(GeneralRequest $request, $id = null): void
+    {
+        $ids = array_values(array_unique(array_map(
+            'intval',
+            array_filter((array) $request->input('user_ids', []))
+        ));
+        if ($ids === []) {
+            $first = $request->input('kunjungan_id_user');
+            if ($first) {
+                $ids = [(int) $first];
+            }
+        }
+        if ($ids === []) {
+            return;
+        }
+
+        $rowId = $id ?? $this->model->latest('kunjungan_id')->value('kunjungan_id');
+        // Data baru: ambil id dari record yang baru dibuat (pemilik = anggota pertama).
+        if (! $id) {
+            $row = $this->model->where('kunjungan_id_user', $ids[0])->latest()->first();
+            $rowId = $row?->kunjungan_id ?? $rowId;
+        }
+        if (! $rowId) {
+            return;
+        }
+
+        $k = $this->model->find($rowId);
+        if ($k) {
+            $k->hasUsers()->sync($ids);
+            // Pastikan pemilik termasuk anggota + kolom lama valid.
+            if ((int) $k->kunjungan_id_user !== $ids[0]) {
+                $k->update(['kunjungan_id_user' => $ids[0]]);
+            }
+        }
     }
 
     /** Set NULL: kembalikan ke pending + lepas tautan check-in (bisa check-in ulang dari HP). */

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -44,28 +45,67 @@ class VisitActivity : AppCompatActivity() {
         BottomNav.wire(this, BottomNav.VISIT)
         listBox = findViewById(R.id.listBox)
         tvInfo = findViewById(R.id.tvInfo)
+        tvInfo.text = "Memuat titik..."
         findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener { load() }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
-        } else load()
+        }
+        checkLocationEnabled()
     }
 
     override fun onRequestPermissionsResult(rc: Int, p: Array<out String>, r: IntArray) {
         super.onRequestPermissionsResult(rc, p, r)
-        load()
+        // load() jalan lewat onResume yang otomatis dipanggil setelah dialog izin.
+    }
+
+    /** Ingatkan bila layanan lokasi HP mati (jarak & status jangkauan butuh GPS). */
+    private fun checkLocationEnabled() {
+        val lm = getSystemService(LOCATION_SERVICE) as LocationManager
+        val on = try {
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        } catch (_: Exception) { true }
+        if (!on) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Lokasi HP mati")
+                .setMessage("Layanan lokasi (GPS) belum aktif — jarak dan status jangkauan tidak bisa dihitung. Nyalakan dulu.")
+                .setPositiveButton("Nyalakan") { _, _ ->
+                    try { startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+                    catch (_: Exception) { }
+                }
+                .setNegativeButton("Nanti", null)
+                .show()
+        }
+    }
+
+    /** Lokasi akurat aman: null bila provider null/mati, tanpa NPE. */
+    private suspend fun safeCurrentLocation(): Location? {
+        return try {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) return null
+            val client = LocationServices.getFusedLocationProviderClient(this)
+            val task = try {
+                client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            } catch (_: Exception) { null }
+            // Task bisa null di sebagian HP/ROM (lokasi mati) — jangan dipanggil langsung.
+            val fresh = try { task?.resultOrNull() } catch (_: Exception) { null }
+            if (fresh != null) return fresh
+            // Fallback lokasi terakhir hanya bila masih segar (<2 menit),
+            // kalau basi (>2 mnt) tolak — lebih baik "GPS null" daripada koordinat ngaco.
+            val last = try { client.lastLocation.resultOrNull() } catch (_: Exception) { null }
+            if (last != null &&
+                (android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000_000 <= 120
+            ) return last
+            return null
+        } catch (_: Exception) { null }
     }
 
     private fun load() {
         lifecycleScope.launch {
             try {
-                myLoc = try {
-                    if (androidx.core.content.ContextCompat.checkSelfPermission(
-                            this@VisitActivity, android.Manifest.permission.ACCESS_FINE_LOCATION
-                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                    ) null
-                    else LocationServices.getFusedLocationProviderClient(this@VisitActivity)
-                        .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).resultOrNull()
-                } catch (_: Exception) { null }
+                myLoc = safeCurrentLocation()
                 val api = MainActivity().let {
                     val log = okhttp3.logging.HttpLoggingInterceptor().setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.BASIC)
                     val client = okhttp3.OkHttpClient.Builder().addInterceptor(log).build()
@@ -96,6 +136,8 @@ class VisitActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         cardMaps.forEach { try { it.onResume() } catch (_: Exception) { } }
+        // Muat ulang tiap kembali ke halaman: tidak pernah blank, data selalu segar.
+        load()
     }
 
     override fun onPause() {
@@ -200,6 +242,34 @@ class VisitActivity : AppCompatActivity() {
         return card
     }
 
+    /** Ikon pin lokasi bawaan OSM yang diwarnai (titik = hijau, posisi saya = merah). */
+    private fun pinIcon(color: Int): android.graphics.drawable.Drawable? {
+        return try {
+            androidx.core.content.ContextCompat.getDrawable(
+                this, org.osmdroid.library.R.drawable.marker_default
+            )?.mutate()?.apply {
+                setTint(color)
+            }
+        } catch (_: Exception) { null }
+    }
+
+    /** Ikon pin bulat berwarna (titik = hijau, posisi saya = merah). */
+    private fun dotIcon(color: Int): android.graphics.drawable.BitmapDrawable {
+        val s = dp(40)
+        val bmp = android.graphics.Bitmap.createBitmap(s, s, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        c.drawCircle(s / 2f, s / 2f, s / 2f - 2f,
+            android.graphics.Paint().apply { this.color = color; isAntiAlias = true })
+        c.drawCircle(s / 2f, s / 2f, s / 2f - 5f,
+            android.graphics.Paint().apply {
+                this.color = android.graphics.Color.WHITE
+                style = android.graphics.Paint.Style.STROKE
+                strokeWidth = 5f
+                isAntiAlias = true
+            })
+        return android.graphics.drawable.BitmapDrawable(resources, bmp)
+    }
+
     /** Map kecil per card: pin titik + radius + posisi saya. Kamera dikunci di titik. */
     private fun buildCardMap(p: VisitPoint): MapView {
         val mv = MapView(this)
@@ -213,6 +283,8 @@ class VisitActivity : AppCompatActivity() {
         Marker(mv).apply {
             position = GeoPoint(p.latitude, p.longitude)
             title = p.name
+            pinIcon(0xFF1B9E57.toInt())?.let { icon = it } ?: run { icon = dotIcon(0xFF1B9E57.toInt()) } // hijau = titik kunjungan
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             mv.overlays.add(this)
         }
         Polygon().apply {
@@ -230,7 +302,8 @@ class VisitActivity : AppCompatActivity() {
         Marker(mv).apply {
             position = GeoPoint(loc.latitude, loc.longitude)
             title = "Posisi saya"
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+            pinIcon(0xFFD63A3A.toInt())?.let { icon = it } ?: run { icon = dotIcon(0xFFD63A3A.toInt()) } // merah = posisi saya
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             mv.overlays.add(this)
             mv.tag = this
         }
@@ -248,9 +321,8 @@ class VisitActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             try {
-                val loc = LocationServices.getFusedLocationProviderClient(this@VisitActivity)
-                    .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).resultOrNull()
-                if (loc == null) { toast("GPS null — coba ke area terbuka"); return@launch }
+                val loc = safeCurrentLocation()
+                if (loc == null) { toast("GPS null — nyalakan lokasi & ke area terbuka"); return@launch }
                 myLoc = loc
                 addMeMarker(mv, loc)
                 mv.controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
@@ -309,6 +381,9 @@ class VisitActivity : AppCompatActivity() {
             Intent(this, CheckinActivity::class.java)
                 .putExtra("kunjungan_id", p.id)
                 .putExtra("kunjungan_name", p.name)
+                .putExtra("kunjungan_lat", p.latitude)
+                .putExtra("kunjungan_lng", p.longitude)
+                .putExtra("kunjungan_radius", p.radius_m)
         )
     }
 

@@ -52,6 +52,8 @@ class Kunjungan extends BaseModel
     {
         return [
             'kunjungan_id_user' => 'required|exists:users,id',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'exists:users,id',
             'kunjungan_tanggal' => 'nullable|date',
             'kunjungan_nama' => 'required|string|max:255',
             'kunjungan_lat' => 'required|numeric|between:-90,90',
@@ -64,6 +66,24 @@ class Kunjungan extends BaseModel
     public function hasUser()
     {
         return $this->belongsTo(User::class, 'kunjungan_id_user', 'id');
+    }
+
+    /** Banyak user per 1 titik (pivot kunjungan_user). */
+    public function hasUsers()
+    {
+        return $this->belongsToMany(User::class, 'kunjungan_user', 'kunjungan_id', 'user_id', 'kunjungan_id', 'id')
+            ->withTimestamps();
+    }
+
+    /** Semua user yang boleh absen di titik ini: anggota pivot + pemilik lama. */
+    public function assignedUserIds(): array
+    {
+        $ids = $this->hasUsers()->pluck('users.id')->all();
+        if ($this->kunjungan_id_user) {
+            $ids[] = (int) $this->kunjungan_id_user;
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     public function hasObjek()

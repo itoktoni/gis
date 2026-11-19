@@ -115,6 +115,14 @@
             android:layout_width="match_parent" android:layout_height="52dp"
             android:layout_marginTop="8dp" />
 
+        <TextView android:id="@+id/tvRange"
+            android:textSize="14sp" android:textStyle="bold"
+            android:gravity="center"
+            android:padding="10dp"
+            android:visibility="gone"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
         <LinearLayout
             android:orientation="horizontal"
             android:gravity="center_vertical"
