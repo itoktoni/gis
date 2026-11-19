@@ -545,7 +545,14 @@ class CheckinActivity : AppCompatActivity() {
                     prefs().edit().remove("auth_token").remove("checkin_secret")
                         .remove("user_id").remove("user_email").apply()
                     toast("Sesi berakhir, login ulang"); finish()
-                } else { toast("Gagal: ${e.message}"); tvStatus.text = "" }
+                } else {
+                    // Tampilkan pesan server (mis. 429 jeda minimal: kapan boleh coba lagi)
+                    val msg = try {
+                        val body = e.response()?.errorBody()?.string()
+                        org.json.JSONObject(body ?: "").optString("message").takeIf { it.isNotEmpty() }
+                    } catch (_: Exception) { null }
+                    toast(msg ?: "Gagal: ${e.message}"); tvStatus.text = ""
+                }
             } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal: ${e.message}"); tvStatus.text = "" }
         }
     }

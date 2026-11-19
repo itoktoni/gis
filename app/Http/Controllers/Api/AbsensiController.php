@@ -166,33 +166,9 @@ class AbsensiController extends Controller
         $failures = [];
         $rangeFailures = [];
 
-        // --- Proteksi spam: jeda minimal antar check-in VALID (config absensi.min_interval_hours) ---
-        $minHours = max(0, (float) config('absensi.min_interval_hours', 3));
-        if ($minHours > 0) {
-            $lastValid = Checkin::where('user_id', $user->id)->where('status', 'valid')->latest()->first();
-            if ($lastValid) {
-                $elapsed = now()->diffInSeconds($lastValid->created_at);
-                $required = (int) round($minHours * 3600);
-                if ($elapsed < $required) {
-                    $remain = $required - $elapsed;
-                    $remainTxt = $remain >= 3600
-                        ? sprintf('%d jam %d mnt', intdiv($remain, 3600), intdiv($remain % 3600, 60))
-                        : sprintf('%d mnt %d dtk', intdiv($remain, 60), $remain % 60);
-
-                    return response()->json([
-                        'message' => sprintf(
-                            'Sudah absen pada %s. Absen berikutnya bisa dilakukan dalam %s (jeda %.1f jam).',
-                            $lastValid->created_at->format('d/m/Y H:i'),
-                            $remainTxt,
-                            $minHours
-                        ),
-                        'last_valid_at' => $lastValid->created_at->toIso8601String(),
-                        'retry_in_seconds' => $remain,
-                        'min_interval_hours' => $minHours,
-                    ], 429);
-                }
-            }
-        }
+        // Proteksi jeda minimal antar check-in DINONAKTIFKAN: user boleh absen
+        // berkali-kali (mis. salah foto / salah titik, bisa langsung ulangi).
+        // Setiap kiriman tetap diverifikasi penuh dan tercatat sebagai baris baru.
 
         // --- Verifikasi titik kunjungan: harus dalam radius titik ---
         $kunjungan = null;
