@@ -31,15 +31,20 @@ class KunjunganController extends Controller
             'userOptions' => User::getOptions(),
             'kebunOptions' => Kebun::getOptions(),
             'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng', 'kebun_polygon as polygon')->get()
-                ->map(fn ($r) => [
-                    'id' => $r->id,
-                    'nama' => $r->nama,
-                    'lat' => $r->lat,
-                    'lng' => $r->lng,
-                    // Normalisasi di sini juga: polygon kebun lama yang korup
-                    // tidak ikut ditempel ke form (auto-fill selalu JSON valid).
-                    'polygon' => \App\Services\UtmConverter::normalizePolygon($r->polygon),
-                ])->keyBy('id'),
+                ->map(function ($r) {
+                    $norm = \App\Services\UtmConverter::normalizePolygon($r->polygon);
+                    $c = \App\Services\UtmConverter::centroidOfPolygon($norm ?? $r->polygon);
+                    return [
+                        'id' => $r->id,
+                        'nama' => $r->nama,
+                        // Bila kebun tak punya lat/lng, pakai titik tengah polygon.
+                        'lat' => $r->lat ?? ($c ? round($c[0], 6) : null),
+                        'lng' => $r->lng ?? ($c ? round($c[1], 6) : null),
+                        // Normalisasi di sini juga: polygon kebun lama yang korup
+                        // tidak ikut ditempel ke form (auto-fill selalu JSON valid).
+                        'polygon' => $norm,
+                    ];
+                })->keyBy('id'),
             'objekOptions' => Objek::getOptions(),
             'objekGeo' => Objek::select('objek_id as id', 'objek_nama as nama', 'objek_lat as lat', 'objek_lng as lng')->get()->keyBy('id'),
             'statusOptions' => [
@@ -353,6 +358,33 @@ class KunjunganController extends Controller
     {
         if (! $request->filled('kunjungan_radius_m')) {
             $request->merge(['kunjungan_radius_m' => 100]);
+        }
+        // Cadangan server: bila lat/lng kosong tapi kebun/objek dipilih,
+        // isi dari master agar simpan tidak gagal (JS auto-fill bisa
+        // tidak jalan saat TomSelect search aktif).
+        if ((! $request->filled('kunjungan_lat') || ! $request->filled('kunjungan_lng')) && $request->filled('kunjungan_id_kebun')) {
+            $kb = \App\Models\Kebun::where('kebun_id', $request->input('kunjungan_id_kebun'))->first();
+            if ($kb) {
+                if (! $request->filled('kunjungan_lat') && $kb->kebun_lat !== null) $request->merge(['kunjungan_lat' => $kb->kebun_lat]);
+                if (! $request->filled('kunjungan_lng') && $kb->kebun_lng !== null) $request->merge(['kunjungan_lng' => $kb->kebun_lng]);
+                // Kebun tanpa lat/lng (hanya polygon): pakai titik tengah polygon.
+                if ((! $request->filled('kunjungan_lat') || ! $request->filled('kunjungan_lng')) && $kb->kebun_polygon) {
+                    $c = \App\Services\UtmConverter::centroidOfPolygon(
+                        \App\Services\UtmConverter::normalizePolygon($kb->kebun_polygon) ?? $kb->kebun_polygon
+                    );
+                    if ($c) {
+                        if (! $request->filled('kunjungan_lat')) $request->merge(['kunjungan_lat' => round($c[0], 6)]);
+                        if (! $request->filled('kunjungan_lng')) $request->merge(['kunjungan_lng' => round($c[1], 6)]);
+                    }
+                }
+            }
+        }
+        if ((! $request->filled('kunjungan_lat') || ! $request->filled('kunjungan_lng')) && $request->filled('kunjungan_id_objek')) {
+            $ob = \App\Models\Objek::where('objek_id', $request->input('kunjungan_id_objek'))->first();
+            if ($ob) {
+                if (! $request->filled('kunjungan_lat') && $ob->objek_lat !== null) $request->merge(['kunjungan_lat' => $ob->objek_lat]);
+                if (! $request->filled('kunjungan_lng') && $ob->objek_lng !== null) $request->merge(['kunjungan_lng' => $ob->objek_lng]);
+            }
         }
         // Polygon GeoJSON mentah (tempel QGIS/UTM) dinormalisasi ke Polygon lat/lng.
         // Bila tidak dikenali (mis. tempelan terpotong), kosongkan agar

@@ -167,4 +167,33 @@ class UtmConverter
 
         return $ring;
     }
+
+    /** Titik tengah (rata-rata ring luar) polygon GeoJSON — untuk isi lat/lng otomatis. */
+    public static function centroidOfPolygon(?string $polygonJson): ?array
+    {
+        if ($polygonJson === null || trim($polygonJson) === '') {
+            return null;
+        }
+        $gj = json_decode(trim($polygonJson), true);
+        $ring = $gj['coordinates'][0] ?? null;
+        if (! is_array($ring) || count($ring) < 3) {
+            return null;
+        }
+        $sumLat = 0.0;
+        $sumLng = 0.0;
+        $n = 0;
+        foreach ($ring as $c) {
+            if (! is_array($c) || ! isset($c[0], $c[1]) || ! is_numeric($c[0]) || ! is_numeric($c[1])) {
+                continue;
+            }
+            $sumLng += (float) $c[0];
+            $sumLat += (float) $c[1];
+            $n++;
+        }
+        if ($n === 0) {
+            return null;
+        }
+
+        return [$sumLat / $n, $sumLng / $n]; // [lat, lng]
+    }
 }
