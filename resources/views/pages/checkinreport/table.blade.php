@@ -75,6 +75,7 @@
 
         <x-table>
             <x-slot:head>
+                <x-table-checkbox :model="$model" onchange="toggleAll(this)" />
                 <th>Act</th>
                 <th>Foto</th>
                 <x-table-sort field="created_at" label="Tanggal" :sortField="$sortField" :sortDir="$sortDir" />
@@ -87,11 +88,17 @@
             <x-slot:body>
                 @foreach($data as $table)
                 <tr class="report-row cursor-pointer hover:bg-surface-container" data-photo="{{ $table->photo_path ? Storage::url($table->photo_path) : '' }}" data-address="{{ $table->address ?? '-' }}">
+                    <x-table-row-checkbox :model="$model" :value="$table->field_primary" />
                     <td class="w-15 whitespace-nowrap" onclick="event.stopPropagation()">
                         <div class="flex gap-2">
                             <a href="{{ moduleRoute('getShow', ['id' => $table->field_primary]) }}" wire:navigate class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Detail">
                                 <span class="material-symbols-outlined text-lg">visibility</span>
                             </a>
+                            @can('delete', $model)
+                            <a onclick="return confirm('Hapus check-in ini beserta fotonya?')" href="{{ moduleRoute('getDelete', ['id' => $table->field_primary]) }}" class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-error/10 text-error hover:bg-error/20 transition-colors" title="Hapus + foto">
+                                <span class="material-symbols-outlined text-lg">delete</span>
+                            </a>
+                            @endcan
                         </div>
                     </td>
                     <td>
@@ -131,9 +138,16 @@
                         <p class="text-xs mb-3">Selisih radius: <span class="font-semibold {{ $table->selisih_radius_m !== null && $table->selisih_radius_m > 0 ? 'text-red-600' : '' }}">{{ $fmtSelisih($table->selisih_radius_m) }}</span></p>
                         <div class="flex items-center justify-between pt-2 border-t border-outline-variant/50">
                             <span class="text-[9px] font-mono text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">{{ $table->field_primary }}</span>
-                            <a href="{{ moduleRoute('getShow', ['id' => $table->field_primary]) }}" wire:navigate class="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
-                                <span class="material-symbols-outlined text-base">visibility</span> Detail
-                            </a>
+                            <div class="flex gap-2">
+                                <a href="{{ moduleRoute('getShow', ['id' => $table->field_primary]) }}" wire:navigate class="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-primary/10 text-primary text-xs font-semibold">
+                                    <span class="material-symbols-outlined text-base">visibility</span> Detail
+                                </a>
+                                @can('delete', $model)
+                                <a onclick="return confirm('Hapus check-in ini beserta fotonya?')" href="{{ moduleRoute('getDelete', ['id' => $table->field_primary]) }}" class="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-error/10 text-error text-xs font-semibold">
+                                    <span class="material-symbols-outlined text-base">delete</span> Hapus
+                                </a>
+                                @endcan
+                            </div>
                         </div>
                     </div>
                     @endforeach
@@ -143,6 +157,7 @@
         </x-table>
 
         <x-pagination :paginator="$data" />
+        <x-action :model="$model" :action="['delete']"/>
 
     </div>
 

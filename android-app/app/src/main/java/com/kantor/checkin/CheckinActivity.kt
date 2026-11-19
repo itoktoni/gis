@@ -324,12 +324,14 @@ class CheckinActivity : AppCompatActivity() {
         val out = FloatArray(1)
         android.location.Location.distanceBetween(loc.latitude, loc.longitude, tLat, tLng, out)
         val d = out[0]
+        // ≥ 1 km tampil km 4 digit koma, else meter.
+        val ds = if (d >= 1000f) "±%.4f km".format(d / 1000f) else "±%.0f m".format(d)
         if (d <= vpRadius) {
-            tv.text = "✅ Dalam jangkauan titik (±%.0f m / batas %d m)".format(d, vpRadius)
+            tv.text = "✅ Dalam jangkauan titik ($ds / batas %d m)".format(vpRadius)
             tv.setBackgroundColor(0xFFE6F4EA.toInt())
             tv.setTextColor(0xFF1B7A3D.toInt())
         } else {
-            tv.text = "⚠️ Di luar titik (±%.0f m, batas %d m) — mendekat dulu".format(d, vpRadius)
+            tv.text = "⚠️ Di luar titik ($ds, batas %d m) — mendekat dulu".format(vpRadius)
             tv.setBackgroundColor(0xFFFDECEA.toInt())
             tv.setTextColor(0xFFB3261E.toInt())
         }

@@ -75,7 +75,7 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/kunjungan', 'KunjunganController', ['name' => 'kunjungan']);
 
-    Route::auto('/checkin-report', 'CheckinReportController', ['name' => 'checkin-report', 'only' => ['getTable', 'getShow', 'getSummary', 'getPrint', 'getExportExcel']]);
+    Route::auto('/checkin-report', 'CheckinReportController', ['name' => 'checkin-report', 'only' => ['getTable', 'getShow', 'getSummary', 'getPrint', 'getExportExcel', 'getDelete', 'postDelete']]);
 
     Route::auto('/kms/document', 'KmsDocumentController', ['name' => 'kms-document']);
 

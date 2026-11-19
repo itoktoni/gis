@@ -11,7 +11,10 @@ use Illuminate\Http\Request;
 
 class CheckinReportController extends Controller
 {
-    use ControllerTrait;
+    use ControllerTrait {
+        getDelete as protected traitGetDelete;
+        postDelete as protected traitPostDelete;
+    }
 
     public function __construct(Checkin $model)
     {
@@ -76,6 +79,36 @@ class CheckinReportController extends Controller
             'data' => $data,
             'fields' => $this->getFields(),
         ]);
+    }
+
+    public function getDelete(GeneralRequest $request, $id)
+    {
+        $this->deletePhotos([$id]);
+
+        return $this->traitGetDelete($request, $id);
+    }
+
+    public function postDelete(GeneralRequest $request)
+    {
+        $this->deletePhotos((array) $request->input('ids', []));
+
+        return $this->traitPostDelete($request);
+    }
+
+    /** Hapus file foto check-in dari storage agar tidak jadi sampah. */
+    private function deletePhotos(array $ids): void
+    {
+        $ids = array_filter($ids);
+        if ($ids === []) {
+            return;
+        }
+        $paths = $this->model->whereIn('id', $ids)->pluck('photo_path')->filter()->unique();
+        foreach ($paths as $path) {
+            $file = storage_path('app/public/'.$path);
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
     }
 
     public function getShow(GeneralRequest $request, $id)

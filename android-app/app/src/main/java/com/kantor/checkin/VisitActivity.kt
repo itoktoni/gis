@@ -182,6 +182,10 @@ class VisitActivity : AppCompatActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
+    /** Jarak: < 1 km tampil meter, ≥ 1 km tampil km 4 digit koma. */
+    private fun fmtDist(d: Float): String =
+        if (d >= 1000f) "±%.4f km".format(d / 1000f) else "±%.0f m".format(d)
+
     /** Satu card per titik kunjungan: info kantor + jarak + tombol absen. */
     private fun visitCard(p: VisitPoint, d: Float?, inRange: Boolean): com.google.android.material.card.MaterialCardView {
         val card = com.google.android.material.card.MaterialCardView(this).apply {
@@ -223,7 +227,7 @@ class VisitActivity : AppCompatActivity() {
         // Baris info
         if (p.kebun != null) box.addView(infoRow("Kebun", p.kebun + (if (p.objek != null) " • ${p.objek}" else "")))
         box.addView(infoRow("Area", if (!p.polygon.isNullOrBlank()) "Polygon 🗺️" else "${p.radius_m} m"))
-        box.addView(infoRow("Jarak dari saya", if (d == null) "GPS null" else "±%.0f m".format(d)))
+        box.addView(infoRow("Jarak dari saya", if (d == null) "GPS null" else fmtDist(d)))
         box.addView(infoRow("Koordinat", "%.6f, %.6f".format(p.latitude, p.longitude)))
         box.addView(statusBadge(if (d == null) "Menunggu GPS..." else if (inRange) "✅ Dalam jangkauan" else "⚠️ Di luar jangkauan"))
 
@@ -234,7 +238,7 @@ class VisitActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dp(8) }
-            setOnClickListener { centerOnMe(cardMap) }
+            setOnClickListener { centerOnMe(cardMap, p) }
         }
         box.addView(btnPos)
 
@@ -302,6 +306,17 @@ class VisitActivity : AppCompatActivity() {
         ).apply { topMargin = dp(8); bottomMargin = dp(4) }
         mv.setTileSource(TileSourceFactory.MAPNIK)
         mv.setMultiTouchControls(true)
+        // Peta di dalam ScrollView: jangan biarkan induk mencuri gesture —
+        // selama jari di atas peta, scroll halaman dimatikan agar peta bisa digeser/zoom.
+        mv.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_MOVE ->
+                    v.parent?.requestDisallowInterceptTouchEvent(true)
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            false // teruskan ke osmdroid agar peta tetap merespons
+        }
         mv.controller.setZoom(16.0)
         mv.controller.setCenter(GeoPoint(p.latitude, p.longitude))
         Marker(mv).apply {
@@ -395,8 +410,8 @@ class VisitActivity : AppCompatActivity() {
         mv.invalidate()
     }
 
-    /** Geser map card ke posisi HP saat ini. */
-    private fun centerOnMe(mv: MapView) {
+    /** Tombol "Posisi Saya": fit — posisi HP + area tujuan kelihatan sekaligus. */
+    private fun centerOnMe(mv: MapView, p: VisitPoint) {
         if (androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.ACCESS_FINE_LOCATION
             ) != android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -410,7 +425,23 @@ class VisitActivity : AppCompatActivity() {
                 if (loc == null) { toast("GPS null — nyalakan lokasi & ke area terbuka"); return@launch }
                 myLoc = loc
                 addMeMarker(mv, loc)
-                mv.controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
+                // Batas area tujuan: polygon bila ada, else titik.
+                val target = parsePolygonPoints(p.polygon)?.let { boundingBox(it) }
+                    ?: org.osmdroid.util.BoundingBox(p.latitude, p.longitude, p.latitude, p.longitude)
+                val box = org.osmdroid.util.BoundingBox(
+                    maxOf(loc.latitude, target.latNorth),
+                    maxOf(loc.longitude, target.lonEast),
+                    minOf(loc.latitude, target.latSouth),
+                    minOf(loc.longitude, target.lonWest)
+                ).increaseByScale(1.3f)
+                // Tunggu layout peta siap baru fit, agar tidak ngaco.
+                mv.post {
+                    try { mv.zoomToBoundingBox(box, false) }
+                    catch (_: Exception) {
+                        mv.controller.setZoom(15.0)
+                        mv.controller.animateTo(GeoPoint(loc.latitude, loc.longitude))
+                    }
+                }
             } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal dapat lokasi: ${e.message}") }
         }
     }
