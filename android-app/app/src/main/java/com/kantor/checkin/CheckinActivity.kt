@@ -740,8 +740,9 @@ class CheckinActivity : AppCompatActivity() {
                 } else addrLines.add(trial)
             }
             if (addrLines.size > 2) addrLines.subList(2, addrLines.size).clear()
-            val lineH = smallPx * 1.45f
-            val barH = (pad * 2 + datePx * 1.5f + lineH * (addrLines.size + 1)).toInt()
+            val lineH = smallPx * 1.65f
+            // Bawah diberi napas ekstra agar teks tidak mepet tepi foto.
+            val barH = (pad * 2 + datePx * 1.5f + lineH * (addrLines.size + 1) + pad).toInt()
             c.drawRect(0f, (h - barH).toFloat(), w.toFloat(), h.toFloat(),
                 android.graphics.Paint().apply { color = android.graphics.Color.BLACK })
             var y = (h - barH + pad + datePx)

@@ -129,8 +129,9 @@ class CheckinService
         $addrLines = $this->wrapText($address ?: '-', $ttf, $smallSize, $w - $pad * 2, 2);
 
         $dateH = $ttf ? (int) ($dateSize * 1.5) : imagefontheight(5) + 8;
-        $smallH = $ttf ? (int) ($smallSize * 1.45) : imagefontheight(5) + 8;
-        $barH = $pad * 2 + $dateH + $smallH * (count($addrLines) + 1);
+        $smallH = $ttf ? (int) ($smallSize * 1.65) : imagefontheight(5) + 10;
+        // Bawah diberi napas ekstra agar teks tidak mepet tepi foto.
+        $barH = $pad * 2 + $dateH + $smallH * (count($addrLines) + 1) + $pad;
 
         $black = imagecolorallocate($img, 0, 0, 0);
         imagefilledrectangle($img, 0, $h - $barH, $w, $h, $black);
