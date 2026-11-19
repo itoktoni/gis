@@ -138,8 +138,8 @@ class AbsensiController extends Controller
                 'name' => $k->kunjungan_nama,
                 'latitude' => (float) $k->kunjungan_lat,
                 'longitude' => (float) $k->kunjungan_lng,
-                'radius_m' => (int) $k->kunjungan_radius_m,
-                'status' => $k->kunjungan_status,
+                'radius_m' => (int) $kunjungan->kunjungan_radius_m,
+                'status' => $k->kunjungan_status ?? 'pending',
                 'objek' => $k->hasObjek?->objek_nama,
                 'kebun' => $k->hasKebun?->kebun_nama,
                 'date' => $k->kunjungan_tanggal?->format('Y-m-d'),
@@ -457,10 +457,10 @@ class AbsensiController extends Controller
         // check-in BERULANG, jadi status tetap pending, hanya tautan check-in
         // terakhir yang diperbarui.
         if ($kunjungan && $authentic) {
-            $kunjungan->update(array_filter([
-                'kunjungan_status' => $kunjungan->kunjungan_tanggal !== null ? 'done' : null,
+            $kunjungan->update([
+                'kunjungan_status' => $kunjungan->kunjungan_tanggal !== null ? 'done' : 'pending',
                 'kunjungan_id_checkin' => $checkin->id,
-            ], fn ($v) => $v !== null));
+            ]);
         }
 
         return response()->json([

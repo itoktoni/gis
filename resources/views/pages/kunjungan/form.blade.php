@@ -7,7 +7,7 @@
         <x-card :label="moduleLabel()">
             @bind($model ?? null)
 
-                <x-select col="12" name="user_ids[]" label="User (bisa pilih banyak)" :options="$userOptions" :multiple="true" size="6" :default="$model?->assignedUserIds() ?? []" helper="Satu titik untuk banyak satpam. Anggota pertama menjadi penanggung jawab utama." />
+                <x-select col="12" name="user_ids[]" label="User (bisa pilih banyak)" :options="$userOptions" :multiple="true" class="search" :default="$model?->assignedUserIds() ?? []" helper="Satu titik untuk banyak satpam. Anggota pertama menjadi penanggung jawab utama." />
                 <x-input col="6" name="kunjungan_tanggal" label="Tanggal & Jam (kosongkan = selamanya)" type="datetime-local" />
                 <x-input col="12" name="kunjungan_nama" label="Nama Titik" />
                 <x-select col="6" name="kunjungan_id_kebun" label="Kebun" :options="$kebunOptions" />
