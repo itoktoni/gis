@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="@color/apn_primary_dark"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <TextView
+        android:text="⏰"
+        android:textSize="72sp"
+        android:gravity="center"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+    <TextView android:id="@+id/tvAlarmClock"
+        android:text="--:--"
+        android:textSize="56sp" android:textStyle="bold"
+        android:textColor="@color/white"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+    <TextView android:id="@+id/tvAlarmTitle"
+        android:text="Waktunya Check-In"
+        android:textSize="22sp" android:textStyle="bold"
+        android:textColor="#FFD54F"
+        android:gravity="center"
+        android:layout_marginTop="12dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+    <TextView android:id="@+id/tvAlarmMsg"
+        android:text="Segera foto check-in patroli."
+        android:textSize="15sp"
+        android:textColor="@color/white"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+    <Button android:id="@+id/btnAlarmGo" android:text="📷 BUKA CHECK-IN"
+        style="@style/APN.Button.Primary"
+        android:textSize="18sp"
+        android:layout_marginTop="32dp"
+        android:layout_width="match_parent" android:layout_height="64dp" />
+
+    <Button android:id="@+id/btnAlarmSnooze" android:text="😴 TUNDA 10 MENIT"
+        style="@style/APN.Button.Outlined"
+        android:textSize="14sp"
+        android:layout_marginTop="12dp"
+        android:layout_width="match_parent" android:layout_height="56dp" />
+</LinearLayout>

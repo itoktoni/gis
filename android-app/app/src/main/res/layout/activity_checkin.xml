@@ -54,32 +54,49 @@
                     android:id="@+id/preview"
                     android:layout_width="match_parent" android:layout_height="match_parent" />
 
+                <!-- Overlay template WYSIWYG: persis yang ditempel ke foto saat capture -->
+                <ImageView android:id="@+id/ivPrevLogo"
+                    android:src="@drawable/apn_logo"
+                    android:layout_width="176dp" android:layout_height="52dp"
+                    android:scaleType="fitCenter"
+                    android:layout_gravity="top|start"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginTop="2dp" />
+
+                <LinearLayout android:id="@+id/bannerPrev"
+                    android:orientation="vertical"
+                    android:background="#FF000000"
+                    android:padding="10dp"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_gravity="bottom">
+
+                    <TextView android:id="@+id/tvPrevDate"
+                        android:textSize="16sp" android:textStyle="bold"
+                        android:textColor="#FFD54F"
+                        android:text="..."
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+                    <TextView android:id="@+id/tvPrevAddr"
+                        android:textSize="12sp"
+                        android:textColor="@color/white"
+                        android:maxLines="2" android:ellipsize="end"
+                        android:text="-"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+
+                    <TextView android:id="@+id/tvPrevCoord"
+                        android:textSize="12sp"
+                        android:textColor="@color/white"
+                        android:text=""
+                        android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                </LinearLayout>
+
                 <TextView android:id="@+id/tvStamp"
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
                     android:layout_margin="10dp" android:padding="8dp"
                     android:background="#CC1E4FA8" android:textColor="@color/white"
-                    android:textSize="12sp" android:text="Mencari GPS..." />
-
-                <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/btnFlip"
-                    android:src="@android:drawable/ic_menu_rotate"
-                    android:contentDescription="Balik kamera"
-                    android:background="@drawable/circle_primary"
-                    app:tint="@color/white"
-                    android:padding="14dp"
-                    android:layout_width="56dp" android:layout_height="56dp"
-                    android:layout_gravity="top|end"
-                    android:layout_margin="10dp" />
-
-                <androidx.appcompat.widget.AppCompatImageButton android:id="@+id/btnLoc"
-                    android:src="@android:drawable/ic_menu_mylocation"
-                    android:contentDescription="Lokasi saya"
-                    android:background="@drawable/circle_primary"
-                    app:tint="@color/white"
-                    android:padding="14dp"
-                    android:layout_width="56dp" android:layout_height="56dp"
-                    android:layout_gravity="top|start"
-                    android:layout_margin="10dp" />
+                    android:textSize="12sp" android:text="Mencari GPS..."
+                    android:visibility="gone" />
             </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -98,11 +115,32 @@
             android:layout_width="match_parent" android:layout_height="52dp"
             android:layout_marginTop="8dp" />
 
-        <Button android:id="@+id/btnCapture" android:text="📷 CAPTURE &amp; KIRIM"
-            style="@style/APN.Button.Primary"
-            android:textSize="16sp"
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:layout_marginTop="14dp"
-            android:layout_width="match_parent" android:layout_height="62dp" />
+            android:layout_width="match_parent" android:layout_height="wrap_content">
+
+            <Button android:id="@+id/btnLoc"
+                android:text="📍 LOKASI"
+                style="@style/APN.Button.Outlined"
+                android:textSize="12sp"
+                android:layout_width="wrap_content" android:layout_height="56dp"
+                android:layout_marginEnd="8dp" />
+
+            <Button android:id="@+id/btnCapture" android:text="📷 FOTO"
+                style="@style/APN.Button.Primary"
+                android:textSize="16sp"
+                android:layout_weight="1"
+                android:layout_width="0dp" android:layout_height="62dp" />
+
+            <Button android:id="@+id/btnFlip"
+                android:text="🔄 KAMERA"
+                style="@style/APN.Button.Outlined"
+                android:textSize="12sp"
+                android:layout_width="wrap_content" android:layout_height="56dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
 
         <TextView android:id="@+id/tvStatus"
             android:textSize="13sp"

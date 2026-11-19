@@ -81,16 +81,30 @@ class AbsensiController extends Controller
             $startMin = $toMin($cfg['start'] ?? '06:00');
             $endMin = $toMin($cfg['end'] ?? '17:00');
             $intervalMin = max(1, (int) round(((float) ($cfg['interval_hours'] ?? 3)) * 60));
-            $max = max(1, min(48, (int) ($cfg['max_per_day'] ?? 3)));
-            for ($m = $startMin, $n = 0; $m <= $endMin && $n < $max; $m += $intervalMin, $n++) {
-                $times[] = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+            $max = max(1, min(96, (int) ($cfg['max_per_day'] ?? 8)));
+            // Jendela boleh lintas tengah malam (mis. start 18:00 end 06:00):
+            // menit berjalan memutar modulo 24 jam.
+            $spanMin = $endMin >= $startMin ? ($endMin - $startMin) : ((24 * 60 - $startMin) + $endMin);
+            // Total slot yang muat di jendela (tanpa batas max) — untuk deteksi salah konfigurasi.
+            $windowSlots = (int) (floor($spanMin / $intervalMin) + 1);
+            for ($m = $startMin, $n = 0; ($m - $startMin) % (24 * 60) <= $spanMin && $n < $max; $m += $intervalMin, $n++) {
+                $mm = $m % (24 * 60);
+                $times[] = sprintf('%02d:%02d', intdiv($mm, 60), $mm % 60);
             }
+            $truncated = $windowSlots > count($times);
         }
 
         return response()->json([
             'enabled' => $enabled,
             'times' => $times,
             'interval_hours' => (float) ($cfg['interval_hours'] ?? 3),
+            'min_interval_hours' => (float) config('absensi.min_interval_hours', 3),
+            'max_per_day' => $max ?? (int) ($cfg['max_per_day'] ?? 3),
+            // Diagnostik salah konfigurasi: true bila jendela masih muat slot lagi
+            // tapi dipotong oleh max_per_day (mis. interval 0.1 jam + max 3
+            // hanya menghasilkan 06:00, 06:06, 06:12 lalu diam seharian).
+            'truncated_by_max' => $truncated ?? false,
+            'total_slots_in_window' => $windowSlots ?? 0,
             'start' => $cfg['start'] ?? '06:00',
             'end' => $cfg['end'] ?? '17:00',
             'title' => $cfg['title'] ?? 'Waktunya Check-In',
@@ -151,6 +165,34 @@ class AbsensiController extends Controller
         $user = $request->user();
         $failures = [];
         $rangeFailures = [];
+
+        // --- Proteksi spam: jeda minimal antar check-in VALID (config absensi.min_interval_hours) ---
+        $minHours = max(0, (float) config('absensi.min_interval_hours', 3));
+        if ($minHours > 0) {
+            $lastValid = Checkin::where('user_id', $user->id)->where('status', 'valid')->latest()->first();
+            if ($lastValid) {
+                $elapsed = now()->diffInSeconds($lastValid->created_at);
+                $required = (int) round($minHours * 3600);
+                if ($elapsed < $required) {
+                    $remain = $required - $elapsed;
+                    $remainTxt = $remain >= 3600
+                        ? sprintf('%d jam %d mnt', intdiv($remain, 3600), intdiv($remain % 3600, 60))
+                        : sprintf('%d mnt %d dtk', intdiv($remain, 60), $remain % 60);
+
+                    return response()->json([
+                        'message' => sprintf(
+                            'Sudah absen pada %s. Absen berikutnya bisa dilakukan dalam %s (jeda %.1f jam).',
+                            $lastValid->created_at->format('d/m/Y H:i'),
+                            $remainTxt,
+                            $minHours
+                        ),
+                        'last_valid_at' => $lastValid->created_at->toIso8601String(),
+                        'retry_in_seconds' => $remain,
+                        'min_interval_hours' => $minHours,
+                    ], 429);
+                }
+            }
+        }
 
         // --- Verifikasi titik kunjungan: harus dalam radius titik ---
         $kunjungan = null;
@@ -293,6 +335,21 @@ class AbsensiController extends Controller
             }
         }
 
+        // Template ditempel di HP: pastikan tulisan koordinat di banner cocok dengan
+        // koordinat terverifikasi (toleransi ~11 m). Beda = banner dimanipulasi.
+        if (! empty($payload['framed']) && ! empty($payload['banner_coord'])) {
+            $parts = preg_split('/[,\s;]+/', trim((string) $payload['banner_coord']));
+            $parts = array_values(array_filter($parts, fn ($p) => is_numeric($p)));
+            if (count($parts) >= 2) {
+                $bLat = (float) $parts[0];
+                $bLng = (float) $parts[1];
+                if (abs($bLat - (float) $validated['latitude']) > 0.0001
+                    || abs($bLng - (float) $validated['longitude']) > 0.0001) {
+                    $failures[] = 'Tulisan koordinat di foto tidak cocok dengan lokasi terverifikasi (indikasi manipulasi template)';
+                }
+            }
+        }
+
         $authentic = empty($failures);
         // Di luar jangkauan (radius/polygon) = INVALID, bukan PALSU.
         // PALSU hanya untuk indikasi pemalsuan (mock, root, Xposed, dsb).
@@ -338,6 +395,7 @@ class AbsensiController extends Controller
             $address,
             $validated['client_timestamp'] ?? null,
             ! empty($payload['front']),
+            ! empty($payload['framed']),
         );
 
         // Anti-replay: foto yang isinya sama persis sudah pernah dipakai check-in
@@ -400,8 +458,15 @@ class AbsensiController extends Controller
             'original_map_url' => ($origLat !== null) ? sprintf('https://www.google.com/maps?q=%.7f,%.7f', $origLat, $origLng) : null,
         ]);
 
+        // Titik bertanggal = tugas sekali jalan → done setelah check-in VALID.
+        // Titik tanpa tanggal (berlaku selamanya, mis. pos patroli) = boleh
+        // check-in BERULANG, jadi status tetap pending, hanya tautan check-in
+        // terakhir yang diperbarui.
         if ($kunjungan && $authentic) {
-            $kunjungan->update(['kunjungan_status' => 'done', 'kunjungan_id_checkin' => $checkin->id]);
+            $kunjungan->update(array_filter([
+                'kunjungan_status' => $kunjungan->kunjungan_tanggal !== null ? 'done' : null,
+                'kunjungan_id_checkin' => $checkin->id,
+            ], fn ($v) => $v !== null));
         }
 
         return response()->json([

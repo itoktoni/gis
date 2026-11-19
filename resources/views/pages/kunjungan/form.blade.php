@@ -17,6 +17,19 @@
                 <x-input col="4" name="kunjungan_radius_m" label="Radius (m)" type="number" />
                 <x-input col="6" name="kunjungan_status" label="Status" readonly disabled :value="$model?->kunjungan_status ?? 'pending'" helper="Status dikelola aplikasi Android (pending/done)." />
 
+                @if(isset($model) && $model->exists && ($model->kunjungan_status === 'done' || $model->kunjungan_id_checkin))
+                <div class="col-span-12">
+                    @can('reset', $model)
+                    <form method="POST" action="{{ moduleRoute('postReset', ['id' => $model->field_primary]) }}" onsubmit="return confirm('Set NULL? Status kembali pending dan tautan check-in dilepas.')">
+                        @csrf
+                        <button class="inline-flex items-center gap-2 rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white">
+                            <span class="material-symbols-outlined text-lg">restart_alt</span> Set NULL (Reset ke Pending)
+                        </button>
+                    </form>
+                    @endcan
+                </div>
+                @endif
+
             @endbind
         </x-card>
 

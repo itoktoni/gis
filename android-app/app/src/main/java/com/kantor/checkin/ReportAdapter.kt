@@ -25,6 +25,7 @@ class ReportAdapter(
         val photo: ImageView = v.findViewById(R.id.itemPhoto)
         val time: TextView = v.findViewById(R.id.itemTime)
         val addr: TextView = v.findViewById(R.id.itemAddr)
+        val status: TextView = v.findViewById(R.id.itemStatus)
     }
 
     override fun onCreateViewHolder(p: ViewGroup, t: Int): Holder =
@@ -40,6 +41,14 @@ class ReportAdapter(
         }
         h.time.text = prettyTime(it.created_at)
         h.addr.text = it.address ?: "%.5f, %.5f".format(it.latitude, it.longitude)
+        // Hanya 2 label: VALID vs DI LUAR JANGKAUAN (fake dipetakan ke luar jangkauan).
+        val isValid = it.status.equals("valid", ignoreCase = true)
+        h.status.text = if (isValid) "✓ VALID" else "⚠ DI LUAR JANGKAUAN"
+        val bg = h.status.background?.mutate() as? android.graphics.drawable.GradientDrawable
+        bg?.setColor(
+            if (isValid) androidx.core.content.ContextCompat.getColor(h.itemView.context, R.color.apn_success)
+            else androidx.core.content.ContextCompat.getColor(h.itemView.context, R.color.apn_danger)
+        )
         h.itemView.setOnClickListener { onClick(items[h.bindingAdapterPosition]) }
     }
 

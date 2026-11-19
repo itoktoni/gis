@@ -7,6 +7,7 @@ use App\Http\Requests\GeneralRequest;
 use App\Models\Checkin;
 use App\Models\Kunjungan;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class CheckinReportController extends Controller
 {
@@ -86,5 +87,140 @@ class CheckinReportController extends Controller
             'model' => $checkin,
             'kunjungan' => $kunjungan,
         ]));
+    }
+
+    public function getSummary(GeneralRequest $request)
+    {
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            $today = now()->toDateString();
+            $request->merge(['from' => now()->startOfMonth()->toDateString(), 'to' => $today]);
+        }
+        $summary = $this->buildSummary($request);
+
+        return $this->views($this->template(), [
+            'summary' => $summary,
+        ]);
+    }
+
+    public function getPrint(GeneralRequest $request)
+    {
+        set_time_limit(0);
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            $request->merge(['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]);
+        }
+        $data = $this->filteredQuery($request)->orderBy('created_at')->get();
+        $summary = $this->buildSummary($request);
+
+        return $this->views($this->template(), [
+            'data' => $data,
+            'summary' => $summary,
+        ]);
+    }
+
+    public function getExportExcel(GeneralRequest $request)
+    {
+        set_time_limit(0);
+        $filename = 'report-absen-'.now()->format('Ymd-His').'.xls';
+
+        return response()->streamDownload(function () use ($request) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            echo '<head><meta charset="UTF-8"></head><body>';
+            echo '<h3>SUMMARY ABSEN</h3>';
+            echo '<table border="1"><thead><tr>'
+                .'<th>No.</th><th>Karyawan</th><th>Total Check-In</th><th>Valid</th>'
+                .'<th>Di Luar Jangkauan</th><th>Palsu</th><th>Hari Hadir</th><th>% Valid</th>'
+                .'</tr></thead><tbody>';
+            $no = 0;
+            foreach ($this->buildSummary($request) as $row) {
+                $no++;
+                echo '<tr><td>'.$no.'</td>'
+                    .'<td>'.e($row['nama']).'</td>'
+                    .'<td>'.$row['total'].'</td>'
+                    .'<td>'.$row['valid'].'</td>'
+                    .'<td>'.$row['invalid'].'</td>'
+                    .'<td>'.$row['fake'].'</td>'
+                    .'<td>'.$row['hari_hadir'].'</td>'
+                    .'<td>'.$row['persen_valid'].'</td></tr>';
+            }
+            echo '</tbody></table><br><h3>DETAIL ABSEN</h3>';
+            echo '<table border="1"><thead><tr>'
+                .'<th>No.</th><th>Tanggal</th><th>Karyawan</th><th>Status</th>'
+                .'<th>Selisih Radius (m)</th><th>Alamat</th>'
+                .'</tr></thead><tbody>';
+            $no = 0;
+            $this->filteredQuery($request)->orderBy('created_at')->chunk(1000, function ($rows) use (&$no) {
+                foreach ($rows as $table) {
+                    $no++;
+                    echo '<tr><td>'.$no.'</td>'
+                        .'<td>'.e($table->created_at?->format('Y-m-d H:i')).'</td>'
+                        .'<td>'.e($table->hasUser?->name ?? '-').'</td>'
+                        .'<td>'.e($table->status).'</td>'
+                        .'<td>'.e($table->selisih_radius_m ?? '-').'</td>'
+                        .'<td>'.e($table->address ?? '-').'</td></tr>';
+                }
+                flush();
+            });
+            echo '</tbody></table></body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    private function filteredQuery(GeneralRequest|Request $request)
+    {
+        $query = $this->model->with(['hasUser']);
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->input('user_id'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->input('from'));
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->input('to'));
+        }
+
+        return $query;
+    }
+
+    private function buildSummary($request): array
+    {
+        $query = $this->filteredQuery($request);
+        $userIds = (clone $query)->distinct()->pluck('user_id')->filter()->values();
+        $users = User::whereIn('id', $userIds)->orderBy('name')->get();
+        if ($users->isEmpty() && ! $request->filled('user_id')) {
+            $users = User::orderBy('name')->limit(200)->get();
+        } elseif ($request->filled('user_id')) {
+            $users = User::where('id', $request->input('user_id'))->get();
+        }
+        $out = [];
+        foreach ($users as $user) {
+            $q = (clone $query)->where('user_id', $user->id);
+            $total = (clone $q)->count();
+            if ($total === 0 && ! $request->filled('user_id')) {
+                continue;
+            }
+            $valid = (clone $q)->where('status', 'valid')->count();
+            $invalid = (clone $q)->where('status', 'invalid')->count();
+            $fake = (clone $q)->where('status', 'fake')->count();
+            $hariHadir = (clone $q)->where('status', 'valid')
+                ->distinct()->count(\Illuminate\Support\Facades\DB::raw('DATE(created_at)'));
+            $out[] = [
+                'user_id' => $user->id,
+                'nama' => $user->name,
+                'email' => $user->email,
+                'total' => $total,
+                'valid' => $valid,
+                'invalid' => $invalid,
+                'fake' => $fake,
+                'hari_hadir' => $hariHadir,
+                'persen_valid' => $total > 0 ? round($valid / $total * 100, 1) : 0,
+            ];
+        }
+
+        return $out;
     }
 }

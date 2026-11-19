@@ -15,6 +15,41 @@
     </x-card>
     @endif
 
+    @if(isset($model) && $model->exists)
+    @php $nextStatus = \App\Enums\VoucherStatusEnum::nextOptions($model->voucher_status ?? \App\Enums\VoucherStatusEnum::DRAFT); @endphp
+    @can('status', $model)
+    @if(!empty($nextStatus))
+    <x-card label="Penggantian Status" :noGrid="true">
+        <form method="POST" action="{{ moduleRoute('postStatus', ['id' => $model->field_primary]) }}" enctype="multipart/form-data" class="flex flex-col gap-2">
+            @csrf
+            <div class="grid grid-cols-12 gap-3">
+                <div class="col-span-12 sm:col-span-4">
+                    <label class="text-xs font-semibold">Status Berikutnya</label>
+                    <select name="status_ke" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm" required>
+                        @foreach($nextStatus as $code)
+                            <option value="{{ $code }}">{{ \App\Enums\VoucherStatusEnum::getDescription($code) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-span-12 sm:col-span-8">
+                    <label class="text-xs font-semibold">Catatan (wajib bila Revisi/Ditolak)</label>
+                    <input type="text" name="catatan" maxlength="500" placeholder="Catatan perpindahan status..." class="mt-1 w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm">
+                </div>
+                <div class="col-span-12">
+                    <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" class="w-full text-xs">
+                </div>
+            </div>
+            <div>
+                <button onclick="return confirm('Ganti status dokumen?')" class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">
+                    <span class="material-symbols-outlined text-lg">sync</span> Ganti Status
+                </button>
+            </div>
+        </form>
+    </x-card>
+    @endif
+    @endcan
+    @endif
+
     <x-form :model="$model" enctype="multipart/form-data">
         <x-card :label="moduleLabel()">
             @bind($model ?? null)

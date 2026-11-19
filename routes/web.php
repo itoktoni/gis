@@ -30,11 +30,12 @@ Route::middleware('auth')->post('/centrifugo/token', function (Request $request)
     ]);
 });
 
-Route::get('/validate', [ValidateController::class, 'form'])->name('validate.form');
-Route::post('/validate', [ValidateController::class, 'verify'])->name('validate.check');
 Route::get('/validate/{id}', [ValidateController::class, 'show'])->name('validate.byId');
 
 Route::middleware(['auth', 'verified', 'access'])->group(function () {
+
+    Route::get('/validate', [ValidateController::class, 'form'])->name('validate.form');
+    Route::post('/validate', [ValidateController::class, 'verify'])->name('validate.check');
 
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
@@ -72,7 +73,7 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/kunjungan', 'KunjunganController', ['name' => 'kunjungan']);
 
-    Route::auto('/checkin-report', 'CheckinReportController', ['name' => 'checkin-report', 'only' => ['getTable', 'getShow']]);
+    Route::auto('/checkin-report', 'CheckinReportController', ['name' => 'checkin-report', 'only' => ['getTable', 'getShow', 'getSummary', 'getPrint', 'getExportExcel']]);
 
     Route::auto('/kms/document', 'KmsDocumentController', ['name' => 'kms-document']);
 

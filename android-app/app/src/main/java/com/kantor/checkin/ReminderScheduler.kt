@@ -24,20 +24,26 @@ object ReminderScheduler {
         return if (ov != null && ov > 0 && ov <= 24) ov else server
     }
 
-    /** Hitung jam bunyi: start + tiap interval, maks 48, tidak lewat end. */
+    /** Hitung jam bunyi: start + tiap interval, maks 96. Jendela boleh
+     *  lintas tengah malam (mis. start 18:00 end 06:00 → 18,21,00,03,06). */
     fun computeTimes(start: String, end: String, intervalHours: Double, max: Int): List<String> {
         fun toMin(hm: String): Int {
             val p = hm.split(":")
             return (p.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (p.getOrNull(1)?.toIntOrNull() ?: 0)
         }
-        val step = maxOf(1, (intervalHours * 60).toInt())
-        val out = mutableListOf<String>()
-        var m = toMin(start)
+        // round (bukan truncate): 0.1 jam * 60 = 6 menit tepat, bukan 5
+        val step = maxOf(1, kotlin.math.round(intervalHours * 60).toInt())
+        val startMin = toMin(start)
         val endMin = toMin(end)
+        // Rentang memutar: bila end < start, lanjut lewat tengah malam.
+        val span = if (endMin >= startMin) endMin - startMin else (24 * 60 - startMin) + endMin
+        val out = mutableListOf<String>()
+        var m = startMin
         var n = 0
-        val cap = maxOf(1, minOf(max, 48))
-        while (m <= endMin && n < cap) {
-            out.add("%02d:%02d".format(m / 60, m % 60))
+        val cap = maxOf(1, minOf(max, 96))
+        while (m - startMin <= span && n < cap) {
+            val mm = m % (24 * 60)
+            out.add("%02d:%02d".format(mm / 60, mm % 60))
             m += step; n++
         }
         return out
@@ -58,8 +64,10 @@ object ReminderScheduler {
                     .build().create(ApiService::class.java)
                 val cfg = api.reminderConfig("Bearer $token")
                 val iv = effectiveInterval(p, cfg.interval_hours)
+                // Override HP → hitung ulang lokal; kalau ikut server, pakai jam
+                // dari server apa adanya (max_per_day server tetap dihormati).
                 val times = if (kotlin.math.abs(iv - cfg.interval_hours) < 1e-9) cfg.times
-                else computeTimes(cfg.start, cfg.end, iv, 48)
+                else computeTimes(cfg.start, cfg.end, iv, 96)
                 val eff = cfg.copy(times = times)
                 p.edit().putString(PREF_TIMES, times.joinToString(",")).apply()
                 schedule(app, eff)
@@ -74,10 +82,10 @@ object ReminderScheduler {
     fun schedule(ctx: Context, cfg: ReminderConfig) {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         // Hapus jadwal lama dulu
-        for (i in 0 until 48) am.cancel(pending(ctx, i, null, null))
+        for (i in 0 until 96) am.cancel(pending(ctx, i, null, null))
         if (!cfg.enabled || cfg.times.isEmpty()) return
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        cfg.times.take(48).forEachIndexed { i, hm ->
+        cfg.times.take(96).forEachIndexed { i, hm ->
             val (h, m) = hm.split(":").map { it.toIntOrNull() ?: 0 }
             val cal = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)

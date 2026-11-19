@@ -21,8 +21,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Laporan monitoring: list waktu + alamat + foto, filter rentang tanggal.
- * Tanpa info asli/palsu (itu hanya di server).
+ * Laporan monitoring: list waktu + alamat + foto + badge status.
+ * Status hanya 2 label: VALID vs DI LUAR JANGKAUAN (fake dari server dipetakan ke luar jangkauan).
  */
 class ReportActivity : AppCompatActivity() {
 
@@ -115,15 +115,42 @@ class ReportActivity : AppCompatActivity() {
     }
 
     private fun showPhoto(item: CheckinItem) {
-        val img = android.widget.ImageView(this).apply {
-            load(serverUrl() + "storage/" + item.photo_path)
-            adjustViewBounds = true
-        }
-        AlertDialog.Builder(this)
-            .setTitle(item.address ?: "Check-in")
-            .setView(img)
-            .setPositiveButton("Tutup", null)
-            .show()
+        val url = serverUrl() + "storage/" + item.photo_path
+        val view = layoutInflater.inflate(R.layout.dialog_checkin_photo, null)
+        val img = view.findViewById<android.widget.ImageView>(R.id.dlgPhoto)
+        img.load(url) { placeholder(android.R.drawable.ic_menu_gallery) }
+        view.findViewById<TextView>(R.id.dlgAddr).text =
+            item.address ?: "%.5f, %.5f".format(item.latitude, item.longitude)
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(prettyTitle(item))
+            .setView(view)
+            .create()
+        view.findViewById<Button>(R.id.dlgDownload).setOnClickListener { downloadPhoto(url, item) }
+        view.findViewById<Button>(R.id.dlgClose).setOnClickListener { dlg.dismiss() }
+        dlg.show()
+    }
+
+    private fun prettyTitle(item: CheckinItem): String = try {
+        val inFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+        val d = inFmt.parse(item.created_at.substring(0, 19)) ?: Date()
+        SimpleDateFormat("dd MMM yyyy HH:mm", Locale("in", "ID")).format(d)
+    } catch (_: Exception) { "Check-in" }
+
+    private fun downloadPhoto(url: String, item: CheckinItem) {
+        try {
+            val name = "checkin_${item.id}_${System.currentTimeMillis()}.jpg"
+            val req = android.app.DownloadManager.Request(android.net.Uri.parse(url))
+                .setTitle(name)
+                .setDescription(item.address ?: "Foto check-in")
+                .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, name)
+                .setAllowedOverMetered(true)
+            val token = token()
+            if (token.isNotEmpty()) req.addRequestHeader("Authorization", "Bearer $token")
+            val dm = getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+            dm.enqueue(req)
+            toast("Mengunduh foto...")
+        } catch (e: Exception) { toast("Gagal mengunduh: ${e.message}") }
     }
 
     private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_LONG).show()

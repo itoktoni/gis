@@ -19,7 +19,9 @@ data class CheckinRes(
     val failures: List<String> = emptyList()
 )
 
-// Laporan monitoring: hanya waktu + alamat + foto (tanpa status asli/palsu).
+// Laporan monitoring: waktu + alamat + foto + status (valid / di luar jangkauan).
+// Server mengirim status: valid | invalid | fake — fake TIDAK ditampilkan apa adanya,
+// melainkan dipetakan ke "di luar jangkauan" agar laporan hanya punya 2 label.
 data class CheckinItem(
     val id: String,
     val latitude: Double,
@@ -27,7 +29,9 @@ data class CheckinItem(
     val address: String?,
     val client_timestamp: String?,
     val photo_path: String,
-    val created_at: String
+    val created_at: String,
+    val status: String? = null,
+    val failure_reason: String? = null
 )
 data class PagedCheckins(val data: List<CheckinItem>)
 
@@ -62,6 +66,10 @@ data class ReminderConfig(
     val enabled: Boolean = true,
     val times: List<String> = emptyList(),
     val interval_hours: Double = 3.0,
+    val min_interval_hours: Double = 3.0,
+    val max_per_day: Int = 3,
+    val truncated_by_max: Boolean = false,
+    val total_slots_in_window: Int = 0,
     val start: String = "06:00",
     val end: String = "17:00",
     val title: String = "",

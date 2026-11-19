@@ -11,6 +11,16 @@ return [
     'polygon_tolerance_m' => env('KEBUN_POLYGON_TOLERANCE_M', 100),
 
     /*
+    |--------------------------------------------------------------------------
+    | Jeda minimal antar check-in VALID (jam)
+    |--------------------------------------------------------------------------
+    | Check-in VALID berikutnya ditolak (HTTP 429) bila check-in VALID
+    | terakhir user masih dalam jeda ini. Check-in INVALID/PALSU tidak
+    | dihitung agar user bisa langsung coba lagi setelah pindah lokasi.
+    */
+    'min_interval_hours' => env('ABSEN_MIN_INTERVAL_HOURS', 3),
+
+    /*
     /*
     |--------------------------------------------------------------------------
     | Pengingat check-in (notifikasi lokal Android)
@@ -26,7 +36,11 @@ return [
         'end' => env('REMINDER_END', '17:00'),        // jam selesai (WIB)
         // Interval jam, boleh desimal (contoh: 3, 1, 0.5 = 30 mnt, 0.2 = 12 mnt)
         'interval_hours' => env('REMINDER_INTERVAL_HOURS', 3),
-        'max_per_day' => env('REMINDER_MAX_PER_DAY', 3),
+        // Jendela BOLEH lintas tengah malam untuk shift malam
+        // (contoh: start 18:00 end 06:00 + interval 3 = bunyi 18, 21, 00, 03, 06).
+        // PENTING: max_per_day memotong daftar jam. Contoh shift malam di atas
+        // butuh max >= 5; bila kurang, hanya bunyi pertama yang dijadwalkan.
+        'max_per_day' => env('REMINDER_MAX_PER_DAY', 8),
         'title' => env('REMINDER_TITLE', 'Waktunya Check-In'),
         'message' => env('REMINDER_MESSAGE', 'Jangan lupa check-in kehadiran hari ini.'),
     ],

@@ -70,6 +70,15 @@ class KunjunganController extends Controller
         return $this->traitPostUpdate($request, $id);
     }
 
+    /** Set NULL: kembalikan ke pending + lepas tautan check-in (bisa check-in ulang dari HP). */
+    public function postReset(GeneralRequest $request, $id)
+    {
+        $row = $this->model->findOrFail($id);
+        $row->update(['kunjungan_status' => 'pending', 'kunjungan_id_checkin' => null]);
+
+        return $this->response($this->payload(TOAST_SUCCESS, $row));
+    }
+
     /**
      * Tolak titik di kebun yang tidak boleh diakses user tersebut.
      * User tanpa mapping (allowedKebunIds null) boleh ke semua kebun.

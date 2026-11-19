@@ -44,7 +44,7 @@ class SettingActivity : AppCompatActivity() {
                         .build().create(ApiService::class.java)
                     val cfg = api.reminderConfig("Bearer $token")
                     val iv = ReminderScheduler.effectiveInterval(p, cfg.interval_hours)
-                    val times = ReminderScheduler.computeTimes(cfg.start, cfg.end, iv, 48)
+                    val times = ReminderScheduler.computeTimes(cfg.start, cfg.end, iv, maxOf(cfg.max_per_day, 96))
                     tvReminderInfo.text = "Server: tiap ${cfg.interval_hours} jam\nHP ini: tiap $iv jam (${times.size}x: ${times.take(6).joinToString(", ")}${if (times.size > 6) "..." else ""})"
                 } catch (_: Exception) {
                     tvReminderInfo.text = "Tidak bisa memuat config server (offline)"

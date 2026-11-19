@@ -16,6 +16,11 @@
         <item name="cornerRadius">14dp</item>
     </style>
 
+    <style name="APN.Button.Danger" parent="Widget.Material3.Button">
+        <item name="cornerRadius">14dp</item>
+        <item name="backgroundTint">@color/apn_danger</item>
+    </style>
+
     <style name="APN.Card" parent="Widget.Material3.CardView.Elevated">
         <item name="cardCornerRadius">18dp</item>
     </style>

@@ -20,11 +20,12 @@ class CheckinService
 
     /**
      * @param string $jpegBytes  bytes foto asli dari HP
+     * @param bool $preframed    true = template sudah ditempel di HP, server tidak membingkai lagi
      * @return array{bytes, content_hash, embedded_signature, expired_at}
      */
-    public function signCheckin(string $jpegBytes, User $user, float $lat, float $lng, ?float $accuracy, ?string $address, ?string $clientTimestamp, bool $front = false): array
+    public function signCheckin(string $jpegBytes, User $user, float $lat, float $lng, ?float $accuracy, ?string $address, ?string $clientTimestamp, bool $front = false, bool $preframed = false): array
     {
-        $framed = $this->applyFrame($jpegBytes, $lat, $lng, $address, $front);
+        $framed = $preframed ? $jpegBytes : $this->applyFrame($jpegBytes, $lat, $lng, $address, $front);
         $contentHash = hash('sha256', $framed);
 
         $metadata = [

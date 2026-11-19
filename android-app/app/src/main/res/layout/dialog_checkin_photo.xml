@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+    <ImageView android:id="@+id/dlgPhoto"
+        android:layout_width="match_parent" android:layout_height="280dp"
+        android:scaleType="centerCrop"
+        android:background="@color/apn_primary_light" />
+
+    <TextView android:id="@+id/dlgAddr"
+        android:textSize="13sp"
+        android:textColor="@color/apn_text_muted"
+        android:layout_marginTop="10dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:weightSum="2"
+        android:layout_marginTop="12dp"
+        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+        <Button android:id="@+id/dlgDownload" android:text="⬇ UNDUH"
+            style="@style/APN.Button.Primary"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:layout_width="0dp" android:layout_height="52dp" />
+
+        <Button android:id="@+id/dlgClose" android:text="TUTUP"
+            style="@style/APN.Button.Outlined"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_width="0dp" android:layout_height="52dp" />
+    </LinearLayout>
+</LinearLayout>

@@ -22,6 +22,15 @@
                 <a href="{{ moduleRoute('getTable', ['all' => 1]) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">restart_alt</span> Semua
                 </a>
+                <a href="{{ moduleRoute('getSummary', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id')])) }}" wire:navigate class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">summarize</span> Summary
+                </a>
+                <a href="{{ moduleRoute('getPrint', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status')])) }}" target="_blank" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">print</span> Print
+                </a>
+                <a href="{{ moduleRoute('getExportExcel', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status')])) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">download</span> Excel
+                </a>
             </div>
         </form>
 

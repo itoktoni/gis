@@ -52,15 +52,24 @@
                         android:layout_marginTop="8dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
 
-                    <Button android:id="@+id/btnTest" android:text="🔍 TES KONEKSI"
-                        style="@style/APN.Button.Outlined"
+                    <LinearLayout
+                        android:orientation="horizontal"
                         android:layout_marginTop="12dp"
-                        android:layout_width="match_parent" android:layout_height="56dp" />
+                        android:weightSum="2"
+                        android:layout_width="match_parent" android:layout_height="wrap_content">
 
-                    <Button android:id="@+id/btnSaveServer" android:text="💾 SIMPAN"
-                        style="@style/APN.Button.Primary"
-                        android:layout_marginTop="8dp"
-                        android:layout_width="match_parent" android:layout_height="56dp" />
+                        <Button android:id="@+id/btnTest" android:text="🔍 TES"
+                            style="@style/APN.Button.Outlined"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="4dp"
+                            android:layout_width="0dp" android:layout_height="56dp" />
+
+                        <Button android:id="@+id/btnSaveServer" android:text="💾 SIMPAN"
+                            style="@style/APN.Button.Primary"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:layout_width="0dp" android:layout_height="56dp" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -94,10 +103,24 @@
                         android:layout_marginTop="6dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
 
-                    <Button android:id="@+id/btnSaveReminder" android:text="💾 SIMPAN INTERVAL"
-                        style="@style/APN.Button.Primary"
+                    <LinearLayout
+                        android:orientation="horizontal"
                         android:layout_marginTop="8dp"
-                        android:layout_width="match_parent" android:layout_height="56dp" />
+                        android:weightSum="2"
+                        android:layout_width="match_parent" android:layout_height="wrap_content">
+
+                        <Button android:id="@+id/btnSaveReminder" android:text="💾 SIMPAN"
+                            style="@style/APN.Button.Primary"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="4dp"
+                            android:layout_width="0dp" android:layout_height="56dp" />
+
+                        <Button android:id="@+id/btnTestNotif" android:text="🔔 TES NOTIF"
+                            style="@style/APN.Button.Outlined"
+                            android:layout_weight="1"
+                            android:layout_marginStart="4dp"
+                            android:layout_width="0dp" android:layout_height="56dp" />
+                    </LinearLayout>
 
                     <TextView android:id="@+id/tvNotifStatus"
                         android:text="Mengecek izin notifikasi..."
@@ -106,15 +129,11 @@
                         android:layout_marginTop="12dp"
                         android:layout_width="match_parent" android:layout_height="wrap_content" />
 
-                    <Button android:id="@+id/btnTestNotif" android:text="🔔 TES NOTIFIKASI SEKARANG"
-                        style="@style/APN.Button.Outlined"
-                        android:layout_marginTop="8dp"
-                        android:layout_width="match_parent" android:layout_height="56dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <Button android:id="@+id/btnLogoutSetting" android:text="🚪 LOGOUT"
-                style="@style/APN.Button.Outlined"
+                style="@style/APN.Button.Danger"
                 android:layout_marginTop="12dp"
                 android:layout_width="match_parent" android:layout_height="56dp" />
 

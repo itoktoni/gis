@@ -116,12 +116,12 @@ class CheckinActivity : AppCompatActivity() {
         }
         stampHandler.post(stampTick)
 
-        findViewById<android.widget.ImageButton>(R.id.btnFlip).setOnClickListener {
+        findViewById<Button>(R.id.btnFlip).setOnClickListener {
             lensFacing = if (lensFacing == CameraSelector.LENS_FACING_FRONT)
                 CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
             startCameraSafe()
         }
-        findViewById<android.widget.ImageButton>(R.id.btnLoc).setOnClickListener { doRelocate() }
+        findViewById<Button>(R.id.btnLoc).setOnClickListener { doRelocate() }
         findViewById<Button>(R.id.btnCapture).setOnClickListener { doCaptureAndSend() }
         findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.setOnRefreshListener {
             updateStamp()
@@ -270,10 +270,18 @@ class CheckinActivity : AppCompatActivity() {
     }
 
     private fun updateStamp() {
-        val time = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale("in", "ID")).format(Date())
+        val wib = java.util.TimeZone.getTimeZone("Asia/Jakarta")
+        val time = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale("in", "ID")).apply { timeZone = wib }.format(Date())
         val loc = lastLoc
         tvStamp.text = if (loc == null) "$time\nMencari GPS..."
         else "$time\n${lastAddr ?: "-"}\n%.6f, %.6f".format(loc.latitude, loc.longitude)
+        // Banner overlay WYSIWYG di preview — sama persis dengan yang ditempel ke foto.
+        try {
+            findViewById<TextView>(R.id.tvPrevDate)?.text = time
+            findViewById<TextView>(R.id.tvPrevAddr)?.text = lastAddr ?: "-"
+            findViewById<TextView>(R.id.tvPrevCoord)?.text =
+                if (loc == null) "Mencari GPS..." else "%.6f, %.6f".format(loc.latitude, loc.longitude)
+        } catch (_: Exception) { }
         // Kunci tombol kirim selama ancaman mock/developer terdeteksi (cek ringan tiap detik)
         val lt = lightThreat()
         refreshCaptureButton(lt)
@@ -409,7 +417,7 @@ class CheckinActivity : AppCompatActivity() {
                 tvStatus.text = "Memotret..."
                 val rawPhoto = takePhoto()
                 tvStatus.text = "Menyiapkan foto..."
-                val photo = downscaleIfNeeded(rawPhoto)
+                val downsized = downscaleIfNeeded(rawPhoto)
                 tvStatus.text = "Mengambil lokasi..."
                 val loc = currentLocation() ?: lastLoc
                     ?: run { toast("GPS null, nyalakan lokasi"); tvStatus.text = ""; return@launch }
@@ -463,6 +471,13 @@ class CheckinActivity : AppCompatActivity() {
                 } else {
                     toast("Mode admin: lokasi mock tetap dikirim (ditandai server)")
                 }
+                // Template di HP: banner tanggal+alamat+koordinat+logo ditempel di sini.
+                // Server TIDAK lagi membingkai (payload framed=true) — tapi tetap hash + RSA-sign.
+                tvStatus.text = "Menempel template..."
+                val wib = java.util.TimeZone.getTimeZone("Asia/Jakarta")
+                val bannerDate = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale("in", "ID")).apply { timeZone = wib }.format(Date())
+                val bannerCoord = "%.6f, %.6f".format(loc.latitude, loc.longitude)
+                val photo = framePhoto(downsized, bannerDate, addr, bannerCoord)
                 val payloadJson = JSONObject()
                     .put("user_id", userId())
                     .put("timestamp", ts)
@@ -470,6 +485,10 @@ class CheckinActivity : AppCompatActivity() {
                     .put("lng", loc.longitude)
                     .put("accuracy", if (loc.hasAccuracy()) loc.accuracy.toDouble() else JSONObject.NULL)
                     .put("image_hash", sha256Hex(photo))
+                    .put("framed", true)
+                    .put("banner_date", bannerDate)
+                    .put("banner_addr", addr ?: JSONObject.NULL)
+                    .put("banner_coord", bannerCoord)
                     .put("mock", mock)
                     .put("dev_mode", isDevModeOn())
                     .put("front", lensFacing == CameraSelector.LENS_FACING_FRONT)
@@ -658,6 +677,75 @@ class CheckinActivity : AppCompatActivity() {
         } catch (e: Exception) {
             return Triple(Triple(null, null, null), null, "net: " + (e.message ?: e.toString()))
         }
+    }
+
+    /** Template check-in di HP: banner bawah (tanggal+alamat+koordinat) + logo APN kiri-atas.
+     *  Hasilnya yang di-upload; server tidak lagi membingkai (tetap hash + RSA-sign). */
+    private fun framePhoto(f: File, dateStr: String, addr: String?, coord: String): File {
+        try {
+            val opts = android.graphics.BitmapFactory.Options().apply { inMutable = true }
+            var bmp = android.graphics.BitmapFactory.decodeFile(f.absolutePath, opts)
+                ?: return f
+            // Pastikan mutable + orientasi benar (abaikan EXIF: decode manual lalu putar bila perlu)
+            bmp = bmp.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+            val w = bmp.width; val h = bmp.height
+            val c = android.graphics.Canvas(bmp)
+            val density = resources.displayMetrics.density
+
+            // --- Logo APN kiri-atas (lebar ~28% foto) ---
+            try {
+                val logo = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.apn_logo)
+                if (logo != null) {
+                    val targetW = (w * 0.28).toInt()
+                    val scale = targetW.toFloat() / logo.width
+                    val targetH = (logo.height * scale).toInt()
+                    val resized = android.graphics.Bitmap.createScaledBitmap(logo, targetW, targetH, true)
+                    val m = (w * 0.03).toFloat()
+                    // PNG sudah transparan — tempel langsung tanpa latar.
+                    c.drawBitmap(resized, m, m, null)
+                    if (resized != logo) resized.recycle()
+                    logo.recycle()
+                }
+            } catch (_: Exception) { }
+
+            // --- Banner bawah ---
+            val datePx = (w / 26f).coerceAtLeast(20f * density)
+            val smallPx = (datePx * 0.6f).coerceAtLeast(13f * density)
+            val pad = datePx * 0.8f
+            val datePaint = android.graphics.Paint().apply {
+                color = android.graphics.Color.YELLOW; textSize = datePx
+                typeface = android.graphics.Typeface.DEFAULT_BOLD; isAntiAlias = true
+            }
+            val smallPaint = android.graphics.Paint().apply {
+                color = android.graphics.Color.WHITE; textSize = smallPx; isAntiAlias = true
+            }
+            // Bungkus alamat maks 2 baris sesuai lebar
+            val addrLines = mutableListOf<String>()
+            for (word in (addr ?: "-").split("\\s+".toRegex())) {
+                val cur = if (addrLines.isEmpty()) "" else addrLines.removeAt(addrLines.size - 1) + " "
+                val trial = cur + word
+                if (smallPaint.measureText(trial) > w - pad * 2 && cur.isNotBlank()) {
+                    addrLines.add(cur.trim())
+                    if (addrLines.size >= 2) break
+                    addrLines.add(word)
+                } else addrLines.add(trial)
+            }
+            if (addrLines.size > 2) addrLines.subList(2, addrLines.size).clear()
+            val lineH = smallPx * 1.45f
+            val barH = (pad * 2 + datePx * 1.5f + lineH * (addrLines.size + 1)).toInt()
+            c.drawRect(0f, (h - barH).toFloat(), w.toFloat(), h.toFloat(),
+                android.graphics.Paint().apply { color = android.graphics.Color.BLACK })
+            var y = (h - barH + pad + datePx)
+            c.drawText(dateStr, pad, y, datePaint)
+            y += datePx * 1.5f
+            for (line in addrLines) { y += smallPx * 0.45f; c.drawText(line, pad, y + smallPx * 0.55f, smallPaint); y += lineH - smallPx * 0.45f }
+            c.drawText(coord, pad, y + smallPx, smallPaint)
+
+            val out = File(cacheDir, "framed_${System.currentTimeMillis()}.jpg")
+            java.io.FileOutputStream(out).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+            bmp.recycle()
+            return out
+        } catch (_: Exception) { return f }
     }
 
     /** Kecilkan foto bila sisi terpanjang > 1600px agar upload jauh lebih cepat.
