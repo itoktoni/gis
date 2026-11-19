@@ -139,6 +139,7 @@ class AbsensiController extends Controller
                 'latitude' => (float) $k->kunjungan_lat,
                 'longitude' => (float) $k->kunjungan_lng,
                 'radius_m' => (int) $k->kunjungan_radius_m,
+                'polygon' => $k->kunjungan_polygon,
                 'status' => $k->kunjungan_status ?? 'pending',
                 'objek' => $k->hasObjek?->objek_nama,
                 'kebun' => $k->hasKebun?->kebun_nama,
@@ -174,7 +175,7 @@ class AbsensiController extends Controller
         // berkali-kali (mis. salah foto / salah titik, bisa langsung ulangi).
         // Setiap kiriman tetap diverifikasi penuh dan tercatat sebagai baris baru.
 
-        // --- Verifikasi titik kunjungan: harus dalam radius titik ---
+        // --- Verifikasi titik kunjungan: polygon bila ada, else radius titik ---
         $kunjungan = null;
         $selisihRadius = null;
         $jarakM = null;
@@ -183,15 +184,33 @@ class AbsensiController extends Controller
             if (! $kunjungan || ! in_array((int) $user->id, $kunjungan->assignedUserIds(), true)) {
                 return response()->json(['message' => 'Titik kunjungan tidak valid'], 422);
             }
-            $dist = self::distanceM(
-                (float) $kunjungan->kunjungan_lat, (float) $kunjungan->kunjungan_lng,
-                (float) $validated['latitude'], (float) $validated['longitude']);
-            $jarakM = round($dist, 1);
-            $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
-            if ($dist > (float) $kunjungan->kunjungan_radius_m) {
-                $msg = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
-                $failures[] = $msg;
-                $rangeFailures[] = $msg;
+            // Polygon per titik (GeoJSON): gantikan radius bila terisi.
+            if (! empty($kunjungan->kunjungan_polygon)) {
+                $tol = (float) (config('absensi.polygon_tolerance_m', 100));
+                $dPoly = self::distToPolygonM(
+                    (float) $validated['latitude'], (float) $validated['longitude'], (string) $kunjungan->kunjungan_polygon);
+                if ($dPoly === null) {
+                    $msg = sprintf('Polygon titik "%s" rusak — hubungi admin', $kunjungan->kunjungan_nama);
+                    $failures[] = $msg;
+                    $rangeFailures[] = $msg;
+                } elseif ($dPoly > $tol) {
+                    $msg = sprintf('Di luar area "%s" (%.0f m dari batas)', $kunjungan->kunjungan_nama, $dPoly);
+                    $failures[] = $msg;
+                    $rangeFailures[] = $msg;
+                }
+                $jarakM = round($dPoly ?? -1, 1);
+                $selisihRadius = round(($dPoly ?? 0) - $tol, 1);
+            } else {
+                $dist = self::distanceM(
+                    (float) $kunjungan->kunjungan_lat, (float) $kunjungan->kunjungan_lng,
+                    (float) $validated['latitude'], (float) $validated['longitude']);
+                $jarakM = round($dist, 1);
+                $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
+                if ($dist > (float) $kunjungan->kunjungan_radius_m) {
+                    $msg = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
+                    $failures[] = $msg;
+                    $rangeFailures[] = $msg;
+                }
             }
         }
 

@@ -79,6 +79,11 @@ class Kebun extends BaseModel
         return $this->hasMany(Lhp::class, 'lhp_id_kebun', 'kebun_id');
     }
 
+    public function hasBlok()
+    {
+        return $this->hasMany(Blok::class, 'blok_id_kebun', 'kebun_id');
+    }
+
     public function hasVoucher()
     {
         return $this->hasMany(Voucher::class, 'voucher_id_kebun', 'kebun_id');

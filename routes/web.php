@@ -47,6 +47,8 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/kebun', 'KebunController', ['name' => 'kebun']);
 
+    Route::auto('/blok', 'BlokController', ['name' => 'blok']);
+
     Route::auto('/pt', 'PtController', ['name' => 'pt']);
 
     Route::auto('/distrik', 'DistrikController', ['name' => 'distrik']);

@@ -27,9 +27,13 @@
             </div>
         </x-card>
 
-        <div class="sticky bottom-0 flex gap-2 py-3">
-            <button type="submit" class="btn btn-primary flex-1">Periksa Keaslian</button>
-            <a href="{{ route('validate.form') }}" class="btn btn-soft">Reset</a>
+        <div class="h-24"></div>
+
+        <div class="fixed left-0 right-0 lg:left-72 bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-3 md:px-6 py-2 md:py-3 z-[45]" style="bottom: 4rem">
+            <div class="flex items-center justify-end max-w-full mx-auto gap-2 md:gap-3">
+                <a href="{{ route('validate.form') }}" class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0">Reset</a>
+                <button type="submit" class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg bg-primary text-on-primary hover:bg-primary/90 shadow-sm transition-all active:scale-95 shrink-0">Periksa Keaslian</button>
+            </div>
         </div>
     </form>
 </x-layouts::app>

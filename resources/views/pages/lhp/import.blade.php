@@ -11,6 +11,13 @@
                     <p>Kolom ter-mapping otomatis dari header: Tanggal, Hari, Nama Kebun, Luas Panen, TK, Janjang/Kg Panen &amp; Kirim, Brondolan, UP (3 kolom), Curah hujan (3 kolom), Blok Restan.</p>
                     <p>Luas TM, Target, dan RKAP masuk ke <b>master kebun</b> (hanya ditimpa bila &gt; 0). BJR, Output, % Kutip, Restan, dan Total dihitung otomatis.</p>
                     <p>Kebun yang belum ada akan <b>dibuat otomatis</b> (direlasikan ke PT bila namanya cocok). Baris (kebun, tanggal) yang sama akan <b>diperbarui</b>, bukan digandakan.</p>
+                    <p class="mt-2"><b>Format per-blok</b> (satu baris per blok): bila ada kolom <b>Blok</b>, file dibaca per blok — Tanggal | Nama Kebun | Blok | Luas Panen | Janjang Panen | Janjang Kirim | Brondolan Panen | Brondolan Kirim | Restan (Y/T) | TK | Produksi Panen | Produksi Kirim. Blok baru dibuat otomatis, total header dihitung dari rincian.</p>
+                    <p class="mt-2 flex flex-wrap gap-2">
+                        <a href="/templates/lhp-blok-template.csv" download class="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-container">
+                            <span class="material-symbols-outlined text-base">download</span>
+                            Download Contoh Per-Blok
+                        </a>
+                    </p>
                 </div>
 
                 <div class="col-span-12">

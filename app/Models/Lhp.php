@@ -116,6 +116,12 @@ class Lhp extends BaseModel
         return $this->belongsTo(Kebun::class, 'lhp_id_kebun', 'kebun_id');
     }
 
+    /** Rincian panen per blok (diisi dari form LHP). */
+    public function hasBlokRows()
+    {
+        return $this->hasMany(LhpBlok::class, 'lhp_blok_id_lhp', 'lhp_id');
+    }
+
     public function getBjrPanenAttribute(): float
     {
         if (empty($this->lhp_janjang_panen)) {

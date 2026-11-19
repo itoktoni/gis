@@ -76,6 +76,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardServer).setOnClickListener {
             startActivity(Intent(this, SettingActivity::class.java))
         }
+        findViewById<android.view.View>(R.id.statPendingBox).setOnClickListener {
+            startActivity(Intent(this, PendingActivity::class.java))
+        }
         setupDashboard()
         BottomNav.wire(this, BottomNav.HOME)
         refreshSessionUI()
@@ -162,6 +165,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.View>(R.id.cardSync).visibility =
             if (n > 0) android.view.View.VISIBLE else android.view.View.GONE
         if (n > 0) findViewById<TextView>(R.id.tvSyncLabel).text = "Sync ($n)"
+        // Widget Pending di dashboard: selalu tampil saat login (0 bila kosong).
+        try { findViewById<TextView>(R.id.tvStatPending).text = n.toString() } catch (_: Exception) { }
         if (!loggedIn) tvInfo.text = ""
         else tvInfo.text = ""
         if (loggedIn) loadDashboard()

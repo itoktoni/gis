@@ -40,9 +40,9 @@
                 android:layout_width="wrap_content" android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- Preview kamera -->
+        <!-- Preview kamera (4:3 penuh, dikunci agar sama dengan hasil foto) -->
         <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent" android:layout_height="380dp"
+            android:layout_width="match_parent" android:layout_height="460dp"
             style="@style/APN.Card"
             android:layout_marginTop="8dp"
             app:cardElevation="4dp">

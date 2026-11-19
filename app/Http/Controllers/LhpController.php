@@ -26,9 +26,20 @@ class LhpController extends Controller
 
     protected function share($data = [])
     {
+        // Peta kebun → daftar blok (untuk rincian panen per blok di form).
+        $blokByKebun = \App\Models\Blok::orderBy('blok_kode')->get()
+            ->groupBy('blok_id_kebun')
+            ->map(fn ($rows) => $rows->map(fn ($b) => [
+                'id' => $b->blok_id,
+                'kode' => $b->blok_kode,
+                'nama' => $b->blok_nama,
+            ])->values())
+            ->all();
+
         $default = [
             'model' => $this->model,
             'kebunOptions' => kebunOptions(),
+            'blokByKebun' => $blokByKebun,
         ];
 
         return array_merge($default, $data);
@@ -50,14 +61,53 @@ class LhpController extends Controller
     {
         $this->mergeDefaults($request);
 
-        return $this->traitPostCreate($request);
+        $payload = \App\Actions\CreateAction::run($request, $this->model);
+        if (! empty($payload['status']) && ! empty($payload['data'])) {
+            $this->syncBlokRows($payload['data'], $request);
+        }
+
+        return $this->response($payload);
     }
 
     public function postUpdate(GeneralRequest $request, $id)
     {
         $this->mergeDefaults($request);
 
-        return $this->traitPostUpdate($request, $id);
+        $payload = \App\Actions\UpdateAction::run($request, $id, $this->model);
+        if (! empty($payload['status']) && ! empty($payload['data'])) {
+            $this->syncBlokRows($payload['data'], $request);
+        }
+
+        return $this->response($payload);
+    }
+
+    /**
+     * Sinkron rincian panen per blok dari form, lalu hitung ulang total header.
+     * Produksi Kg & TK tetap input manual (hasil timbang).
+     */
+    private function syncBlokRows(Lhp $lhp, GeneralRequest $request): void
+    {
+        $rows = $request->input('blok', []);
+        if (! is_array($rows) || ! $request->exists('blok')) {
+            return;
+        }
+
+        $mapped = [];
+        foreach ($rows as $blokId => $r) {
+            if (! is_array($r)) {
+                continue;
+            }
+            $mapped[(int) $blokId] = [
+                'luas_panen' => $r['luas_panen'] ?? null,
+                'janjang_panen' => $r['janjang_panen'] ?? null,
+                'janjang_kirim' => $r['janjang_kirim'] ?? null,
+                'brondolan_panen' => $r['brondolan_panen'] ?? null,
+                'brondolan_kirim' => $r['brondolan_kirim'] ?? null,
+                'restan' => ! empty($r['restan']),
+            ];
+        }
+
+        app(\App\Services\LhpBlokService::class)->sync($lhp, $mapped);
     }
 
     public function getImport(GeneralRequest $request)

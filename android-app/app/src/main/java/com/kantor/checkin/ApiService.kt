@@ -57,7 +57,8 @@ data class VisitPoint(
     val status: String = "pending",
     val checkin_id: String? = null,
     val objek: String? = null,
-    val kebun: String? = null
+    val kebun: String? = null,
+    val polygon: String? = null
 )
 data class VisitPointsRes(val date: String, val data: List<VisitPoint>)
 

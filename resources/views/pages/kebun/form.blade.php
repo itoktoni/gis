@@ -50,6 +50,52 @@
         <x-action :model="$model" :action="['save']"/>
     </x-form>
 
+    @if(isset($model) && $model->exists)
+    @php $bloks = $model->hasBlok()->orderBy('blok_kode')->get(); @endphp
+    <x-card label="Daftar Blok Sawit ({{ $bloks->count() }})" :noGrid="true">
+        @if($bloks->isEmpty())
+        <p class="text-sm text-on-surface-variant">Belum ada blok. <a href="{{ route('blok.getCreate') }}" class="text-primary hover:underline font-semibold">Tambah blok pertama</a>.</p>
+        @else
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-on-surface-variant border-b border-outline-variant">
+                        <th class="py-2 pr-3">Kode</th>
+                        <th class="py-2 pr-3">Nama Blok</th>
+                        <th class="py-2 pr-3 text-right">Luas (Ha)</th>
+                        <th class="py-2 pr-3 text-right">Pohon</th>
+                        <th class="py-2"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($bloks as $b)
+                    <tr class="border-b border-outline-variant/50">
+                        <td class="py-2 pr-3 font-bold text-primary">{{ $b->blok_kode }}</td>
+                        <td class="py-2 pr-3">{{ $b->blok_nama }}</td>
+                        <td class="py-2 pr-3 text-right">{{ $b->blok_luas_ha ?? '-' }}</td>
+                        <td class="py-2 pr-3 text-right">{{ number_format($b->blok_jumlah_pohon) }}</td>
+                        <td class="py-2 text-right"><a href="{{ route('blok.getUpdate', ['id' => $b->blok_id]) }}" class="text-primary hover:underline text-xs font-semibold">Ubah</a></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr class="font-bold">
+                        <td class="py-2 pr-3" colspan="2">Total ({{ $bloks->count() }} blok)</td>
+                        <td class="py-2 pr-3 text-right">{{ $bloks->sum('blok_luas_ha') }}</td>
+                        <td class="py-2 pr-3 text-right">{{ number_format($bloks->sum('blok_jumlah_pohon')) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        @endif
+        <div class="mt-3 flex gap-2">
+            <a href="{{ route('blok.getCreate') }}" class="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">+ Tambah Blok</a>
+            <a href="{{ route('blok.getTable') }}" class="inline-flex items-center gap-1 rounded-lg border border-outline-variant px-4 py-2 text-sm font-semibold">Kelola Semua Blok</a>
+        </div>
+    </x-card>
+    @endif
+
     <script>
         // Lihat layouts/head: L/turf dimuat lazy via ensureLeaflet/ensureTurf
         // agar aman dari "L is not defined" saat Livewire navigate.

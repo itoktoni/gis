@@ -81,7 +81,18 @@
         </x-table>
 
         <x-pagination :paginator="$data" />
-        <x-action :model="$model" :action="['create', 'delete']"/>
+        <x-action :model="$model" :action="['create', 'delete']">
+            @can('import', $model)
+            <a href="{{ moduleRoute('getImport') }}" wire:navigate class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0">
+                <span class="material-symbols-outlined text-base md:text-xl">upload</span>
+                <span class="hidden sm:inline">Import</span>
+            </a>
+            <a href="/templates/kunjungan-import-template.csv" download class="inline-flex items-center justify-center gap-1 h-8 md:h-10 px-2.5 md:px-4 text-xs md:text-sm font-semibold rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all shrink-0" title="Download contoh CSV import">
+                <span class="material-symbols-outlined text-base md:text-xl">description</span>
+                <span class="hidden sm:inline">Contoh</span>
+            </a>
+            @endcan
+        </x-action>
 
     </div>
 

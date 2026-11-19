@@ -1,0 +1,4 @@
+Nama Titik,User (Email),Kebun,Objek,Tanggal (Y-m-d H:i),Latitude,Longitude,Radius (m),Status
+Pos Jaga Utara,satpam1@kebun.id,Kebun Merdeka,Pos 1,2026-11-20 06:00,-2.719885,111.643005,100,pending
+Patroli Blok A,satpam1@kebun.id,Kebun Merdeka,Blok A,,,100,pending
+Patroli Blok B,satpam2@kebun.id,Kebun Merdeka,Blok B,,,150,pending

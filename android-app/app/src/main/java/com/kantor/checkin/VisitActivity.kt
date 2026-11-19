@@ -78,46 +78,66 @@ class VisitActivity : AppCompatActivity() {
         }
     }
 
-    /** Lokasi akurat aman: null bila provider null/mati, tanpa NPE. */
+    /** Lokasi akurat aman: null bila provider null/mati, tanpa NPE. Maks ~20 detik. */
     private suspend fun safeCurrentLocation(): Location? {
         return try {
-            if (ContextCompat.checkSelfPermission(
-                    this, Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-            ) return null
-            val client = LocationServices.getFusedLocationProviderClient(this)
-            val task = try {
-                client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            } catch (_: Exception) { null }
-            // Task bisa null di sebagian HP/ROM (lokasi mati) — jangan dipanggil langsung.
-            val fresh = try { task?.resultOrNull() } catch (_: Exception) { null }
-            if (fresh != null) return fresh
-            // Fallback lokasi terakhir hanya bila masih segar (<2 menit),
-            // kalau basi (>2 mnt) tolak — lebih baik "GPS null" daripada koordinat ngaco.
-            val last = try { client.lastLocation.resultOrNull() } catch (_: Exception) { null }
-            if (last != null &&
-                (android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000_000 <= 120
-            ) return last
-            return null
+            kotlinx.coroutines.withTimeoutOrNull(20_000) {
+                if (ContextCompat.checkSelfPermission(
+                        this@VisitActivity, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) return@withTimeoutOrNull null
+                val client = LocationServices.getFusedLocationProviderClient(this@VisitActivity)
+                val task = try {
+                    client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                } catch (_: Exception) { null }
+                // Task bisa null di sebagian HP/ROM (lokasi mati) — jangan dipanggil langsung.
+                val fresh = try { task?.resultOrNull() } catch (_: Exception) { null }
+                if (fresh != null) return@withTimeoutOrNull fresh
+                // Fallback lokasi terakhir hanya bila masih segar (<2 menit),
+                // kalau basi (>2 mnt) tolak — lebih baik "GPS null" daripada koordinat ngaco.
+                val last = try { client.lastLocation.resultOrNull() } catch (_: Exception) { null }
+                if (last != null &&
+                    (android.os.SystemClock.elapsedRealtimeNanos() - last.elapsedRealtimeNanos) / 1_000_000_000 <= 120
+                ) return@withTimeoutOrNull last
+                null
+            }
         } catch (_: Exception) { null }
     }
 
     private fun load() {
         lifecycleScope.launch {
+            // Lokasi diambil PARALEL tanpa menghalangi daftar; kartu di-render
+            // ulang saat lokasi tiba agar jarak/status jangkauan muncul.
+            var visits: VisitPointsRes? = null
+            lifecycleScope.launch {
+                val loc = try { safeCurrentLocation() } catch (_: Exception) { null }
+                if (loc != null) {
+                    myLoc = loc
+                    visits?.let { render(it.data) }
+                }
+            }
             try {
-                myLoc = safeCurrentLocation()
+                // Daftar titik dimuat DULUAN tanpa menunggu GPS (GPS sering lama di dalam
+                // ruangan).
                 val api = MainActivity().let {
                     val log = okhttp3.logging.HttpLoggingInterceptor().setLevel(okhttp3.logging.HttpLoggingInterceptor.Level.BASIC)
-                    val client = okhttp3.OkHttpClient.Builder().addInterceptor(log).build()
+                    val client = okhttp3.OkHttpClient.Builder()
+                        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .addInterceptor(log).build()
                     val base = getSharedPreferences("cfg", MODE_PRIVATE).getString("base_url", MainActivity.DEFAULT_URL)!!.trim().let { if (it.endsWith("/")) it else "$it/" }
                     retrofit2.Retrofit.Builder().baseUrl(base).client(client)
                         .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create(com.google.gson.Gson())).build()
                         .create(ApiService::class.java)
                 }
                 val res = api.visitPoints("Bearer ${token()}", null)
+                visits = res
                 tvInfo.text = "Titik hari ini (${res.date}): ${res.data.size}"
                 render(res.data)
-            } catch (e: Exception) { if (e !is kotlinx.coroutines.CancellationException) toast("Gagal muat titik: ${e.message}") }
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) toast("Gagal muat titik: ${e.message}")
+                findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
+            }
         }
     }
 
@@ -150,7 +170,11 @@ class VisitActivity : AppCompatActivity() {
         cardMaps.clear()
         for (p in visits) {
             val d = myLoc?.let { distM(it.latitude, it.longitude, p.latitude, p.longitude) }
-            val inRange = d != null && d <= p.radius_m
+            // Bila titik punya polygon: dalam jangkauan = di dalam polygon (toleransi ikut server).
+            val poly = parsePolygonPoints(p.polygon)
+            val inRange = if (poly != null && myLoc != null) {
+                pointInPolygon(myLoc!!.latitude, myLoc!!.longitude, poly)
+            } else d != null && d <= p.radius_m
             listBox.addView(visitCard(p, d, inRange))
         }
         findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe)?.isRefreshing = false
@@ -198,7 +222,7 @@ class VisitActivity : AppCompatActivity() {
 
         // Baris info
         if (p.kebun != null) box.addView(infoRow("Kebun", p.kebun + (if (p.objek != null) " • ${p.objek}" else "")))
-        box.addView(infoRow("Radius", "${p.radius_m} m"))
+        box.addView(infoRow("Area", if (!p.polygon.isNullOrBlank()) "Polygon 🗺️" else "${p.radius_m} m"))
         box.addView(infoRow("Jarak dari saya", if (d == null) "GPS null" else "±%.0f m".format(d)))
         box.addView(infoRow("Koordinat", "%.6f, %.6f".format(p.latitude, p.longitude)))
         box.addView(statusBadge(if (d == null) "Menunggu GPS..." else if (inRange) "✅ Dalam jangkauan" else "⚠️ Di luar jangkauan"))
@@ -288,13 +312,74 @@ class VisitActivity : AppCompatActivity() {
             mv.overlays.add(this)
         }
         Polygon().apply {
-            setPoints(Polygon.pointsAsCircle(GeoPoint(p.latitude, p.longitude), p.radius_m.toDouble()))
+            // Polygon GeoJSON per titik bila ada (menggantikan radius); else lingkaran radius.
+            val polyPts = parsePolygonPoints(p.polygon)
+            if (polyPts != null) {
+                setPoints(polyPts)
+                fillPaint.color = 0x332196F3
+                outlinePaint.color = 0xFF1976D2.toInt()
+                outlinePaint.strokeWidth = 4f
+                // Zoom pas ke batas polygon.
+                try { mv.zoomToBoundingBox(boundingBox(polyPts).increaseByScale(1.2f), false) } catch (_: Exception) {
+                    mv.controller.setZoom(15.0)
+                    mv.controller.setCenter(GeoPoint(p.latitude, p.longitude))
+                }
+            } else {
+                setPoints(Polygon.pointsAsCircle(GeoPoint(p.latitude, p.longitude), p.radius_m.toDouble()))
+            }
             mv.overlays.add(this)
         }
         myLoc?.let { addMeMarker(mv, it) }
         mv.invalidate()
         cardMaps.add(mv)
         return mv
+    }
+
+    /** Parse GeoJSON Polygon/Feature -> daftar GeoPoint ring luar. Null bila tidak valid. */
+    private fun parsePolygonPoints(raw: String?): List<GeoPoint>? {
+        if (raw.isNullOrBlank()) return null
+        return try {
+            val gj = org.json.JSONObject(raw)
+            var coords = gj.optJSONArray("coordinates")
+            when (gj.optString("type")) {
+                "Feature" -> coords = gj.optJSONObject("geometry")?.optJSONArray("coordinates")
+                "MultiPolygon" -> coords = coords?.optJSONArray(0)
+                // "Polygon" / lainnya: pakai langsung
+            }
+            // coordinates Polygon = [ring]; ambil ring luar.
+            var ring = coords?.optJSONArray(0) ?: return null
+            // Bila masih nested (MultiPolygon sisa) turun satu level.
+            if (ring.length() > 0 && ring.opt(0) is org.json.JSONArray && (ring.optJSONArray(0)?.opt(0) is org.json.JSONArray)) {
+                ring = ring.optJSONArray(0) ?: return null
+            }
+            val pts = mutableListOf<GeoPoint>()
+            for (i in 0 until ring.length()) {
+                val c = ring.optJSONArray(i) ?: continue
+                val lng = c.optDouble(0, Double.NaN); val lat = c.optDouble(1, Double.NaN)
+                if (lat.isNaN() || lng.isNaN()) continue
+                pts.add(GeoPoint(lat, lng))
+            }
+            if (pts.size >= 3) pts else null
+        } catch (_: Exception) { null }
+    }
+
+    private fun boundingBox(pts: List<GeoPoint>): org.osmdroid.util.BoundingBox {
+        var n = -90.0; var s = 90.0; var e = -180.0; var w = 180.0
+        pts.forEach { n = maxOf(n, it.latitude); s = minOf(s, it.latitude); e = maxOf(e, it.longitude); w = minOf(w, it.longitude) }
+        return org.osmdroid.util.BoundingBox(n, e, s, w)
+    }
+
+    /** Ray casting di bidang lat/lng. */
+    private fun pointInPolygon(lat: Double, lng: Double, poly: List<GeoPoint>): Boolean {
+        var inside = false
+        var j = poly.size - 1
+        for (i in poly.indices) {
+            val xi = poly[i].longitude; val yi = poly[i].latitude
+            val xj = poly[j].longitude; val yj = poly[j].latitude
+            if ((yi > lat) != (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside
+            j = i
+        }
+        return inside
     }
 
     private fun addMeMarker(mv: MapView, loc: Location) {

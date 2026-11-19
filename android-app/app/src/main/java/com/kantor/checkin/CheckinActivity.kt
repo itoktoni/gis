@@ -185,6 +185,7 @@ class CheckinActivity : AppCompatActivity() {
         val prev = Preview.Builder().setTargetRotation(rotation).build()
             .also { it.setSurfaceProvider(preview.surfaceProvider) }
         imageCapture = ImageCapture.Builder()
+            .setTargetAspectRatio(androidx.camera.core.AspectRatio.RATIO_4_3)
             .setTargetRotation(rotation)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build()
         provider.unbindAll()
@@ -636,29 +637,34 @@ class CheckinActivity : AppCompatActivity() {
         } catch (_: SecurityException) { null }
     }
 
-    private suspend fun currentLocation() = suspendCancellableCoroutine<android.location.Location?> { c ->
-        if (androidx.core.content.ContextCompat.checkSelfPermission(
-                this, android.Manifest.permission.ACCESS_FINE_LOCATION
-            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            c.resume(null)
-            return@suspendCancellableCoroutine
-        }
-        try {
-            // getCurrentLocation() bisa null di sebagian HP/ROM — jangan dipanggil langsung.
-            val task = LocationServices.getFusedLocationProviderClient(this)
-                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            if (task == null) {
-                c.resume(null)
-                return@suspendCancellableCoroutine
+    /** Lokasi sekali-ambil, MAKS 15 detik — jangan gantung alur foto. */
+    private suspend fun currentLocation() = try {
+        kotlinx.coroutines.withTimeoutOrNull(15_000) {
+            suspendCancellableCoroutine<android.location.Location?> { c ->
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        this@CheckinActivity, android.Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    c.resume(null)
+                    return@suspendCancellableCoroutine
+                }
+                try {
+                    // getCurrentLocation() bisa null di sebagian HP/ROM — jangan dipanggil langsung.
+                    val task = LocationServices.getFusedLocationProviderClient(this@CheckinActivity)
+                        .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    if (task == null) {
+                        c.resume(null)
+                        return@suspendCancellableCoroutine
+                    }
+                    task
+                        .addOnSuccessListener { c.resume(it) }
+                        .addOnFailureListener { if (!c.isCompleted) c.resume(null) }
+                } catch (e: Exception) {
+                    if (!c.isCompleted) c.resume(null)
+                }
             }
-            task
-                .addOnSuccessListener { c.resume(it) }
-                .addOnFailureListener { c.resumeWithException(it) }
-        } catch (e: Exception) {
-            if (!c.isCompleted) c.resumeWithException(e)
         }
-    }
+    } catch (_: Exception) { null }
 
     /** Ada koneksi internet (WiFi/seluler) atau tidak. */
     fun isOnline(): Boolean = try {

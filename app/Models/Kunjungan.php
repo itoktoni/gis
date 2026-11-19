@@ -19,7 +19,7 @@ class Kunjungan extends BaseModel
     protected $fillable = [
         'kunjungan_id_user', 'kunjungan_id_objek', 'kunjungan_id_kebun',
         'kunjungan_tanggal', 'kunjungan_nama', 'kunjungan_lat', 'kunjungan_lng',
-        'kunjungan_radius_m', 'kunjungan_status', 'kunjungan_id_checkin',
+        'kunjungan_radius_m', 'kunjungan_polygon', 'kunjungan_status', 'kunjungan_id_checkin',
     ];
 
     public static $filterColumns = [
@@ -59,6 +59,15 @@ class Kunjungan extends BaseModel
             'kunjungan_lat' => 'required|numeric|between:-90,90',
             'kunjungan_lng' => 'required|numeric|between:-180,180',
             'kunjungan_radius_m' => 'nullable|integer|min:10|max:5000',
+            'kunjungan_polygon' => ['nullable', 'string', 'max:50000', function ($attr, $value, $fail) {
+                if (empty($value)) {
+                    return;
+                }
+                $decoded = json_decode($value, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $fail('Polygon harus GeoJSON valid.');
+                }
+            }],
             'kunjungan_status' => 'nullable|string|in:pending,done',
         ];
     }

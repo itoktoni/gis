@@ -58,6 +58,7 @@ return [
             'label' => 'GIS Sawit',
             'items' => [
                 ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun Sawit', 'match' => ['kebun.*']],
+                ['route' => 'blok.getTable', 'icon' => 'grid_on', 'label' => 'Blok Sawit', 'match' => ['blok.*']],
                 ['route' => 'objek.getTable', 'icon' => 'push_pin', 'label' => 'Objek / POS', 'match' => ['objek.*']],
             ],
         ],

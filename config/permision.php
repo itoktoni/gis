@@ -28,6 +28,7 @@ $allModules = [
     'kebun',
     'pt',
     'distrik',
+    'blok',
     'vendor',
     'divisi',
     'voucher',
@@ -50,10 +51,10 @@ $allModules = [
 
 // Modul yang BOLEH diakses per role fungsi.
 $allow = [
-    'tanaman' => ['dashboard', 'lhp', 'lhp-report', 'kunjungan', 'checkin-report'],
+    'tanaman' => ['dashboard', 'lhp', 'lhp-report', 'kunjungan', 'checkin-report', 'blok'],
     'finance' => ['dashboard', 'voucher', 'voucher-status', 'vendor'],
     'sekretaris' => ['dashboard', 'surat', 'surat-template'],
-    'distrik' => ['dashboard', 'kebun', 'lhp', 'lhp-report', 'masalah', 'kunjungan', 'checkin-report'],
+    'distrik' => ['dashboard', 'kebun', 'blok', 'lhp', 'lhp-report', 'masalah', 'kunjungan', 'checkin-report'],
 ];
 
 $restrict = [];

@@ -81,6 +81,14 @@ class LhpImportAction
                 continue;
             }
 
+            // Mode per-blok: ada kolom Blok/Kode Blok → rincian per blok + total otomatis.
+            if ($cols['blok'] !== null) {
+                $count = $this->processBlokRows($grid, $headRow, $cols, $summary, $kebunMap);
+                $summary['sheets'][] = $title." ({$count} baris blok)";
+
+                continue;
+            }
+
             $count = 0;
             $batch = [];
             foreach (array_slice($grid, $headRow + 1) as $i => $row) {
@@ -234,6 +242,79 @@ class LhpImportAction
             ->all();
     }
 
+    /**
+     * Import format per-blok: Tanggal | Kebun | Blok | Luas Panen |
+     * Janjang Panen | Janjang Kirim | Brondolan Panen | Brondolan Kirim |
+     * Restan (Y/T) | TK | Produksi Panen | Produksi Kirim.
+     * Dikelompokkan per (kebun, tanggal): header = jumlah rincian.
+     * Blok yang belum ada dibuat otomatis. Idempotent per (kebun, tanggal).
+     */
+    private function processBlokRows(array $grid, int $headRow, array $cols, array &$summary, array &$kebunMap): int
+    {
+        $val = fn (array $row, ?int $c) => $c === null ? null : ($row[$c] ?? null);
+        $groups = [];
+        foreach (array_slice($grid, $headRow + 1) as $row) {
+            $tanggal = $this->parseDate($val($row, $cols['tanggal']));
+            $namaKebun = trim((string) ($val($row, $cols['kebun']) ?? ''));
+            $kodeBlok = trim((string) ($val($row, $cols['blok']) ?? ''));
+            if ($tanggal === null || $namaKebun === '' || $kodeBlok === '') {
+                continue;
+            }
+            $key = mb_strtolower($namaKebun);
+            if (! isset($kebunMap[$key])) {
+                $kebun = Kebun::create(['kebun_nama' => $namaKebun, 'kebun_status' => 'aktif']);
+                $kebunMap[$key] = $kebun->kebun_id;
+                $summary['kebun_created'][] = $namaKebun;
+            }
+            $groups[$kebunMap[$key].'|'.$tanggal->toDateString()][] = ['tanggal' => $tanggal, 'kebun_id' => $kebunMap[$key], 'row' => $row];
+            $summary['rows_read']++;
+        }
+
+        $service = app(\App\Services\LhpBlokService::class);
+        $count = 0;
+        foreach ($groups as $g) {
+            $first = $g[0];
+            $lhp = Lhp::firstOrCreate(
+                ['lhp_id_kebun' => $first['kebun_id'], 'lhp_tanggal' => $first['tanggal']->toDateString()],
+                ['lhp_hari' => mb_substr($first['tanggal']->locale('id')->isoFormat('dddd'), 0, 15)]
+            );
+
+            $rows = [];
+            $sumTk = 0;
+            $sumProdPanen = 0;
+            $sumProdKirim = 0;
+            foreach ($g as $item) {
+                $row = $item['row'];
+                $blok = \App\Models\Blok::firstOrCreate(
+                    ['blok_id_kebun' => $first['kebun_id'], 'blok_kode' => trim((string) ($val($row, $cols['blok']) ?? ''))],
+                    ['blok_nama' => 'Blok '.trim((string) ($val($row, $cols['blok']) ?? ''))]
+                );
+                $rows[$blok->blok_id] = [
+                    'luas_panen' => $val($row, $cols['luas_panen'] ?? null),
+                    'janjang_panen' => $val($row, $cols['jj_panen'] ?? null),
+                    'janjang_kirim' => $val($row, $cols['jj_kirim'] ?? null),
+                    'brondolan_panen' => $val($row, $cols['bro_panen'] ?? $cols['brondolan'] ?? null),
+                    'brondolan_kirim' => $val($row, $cols['bro_kirim'] ?? null),
+                    'restan' => in_array(mb_strtolower(trim((string) ($val($row, $cols['restan'] ?? null) ?? ''))), ['y', 'ya', 'yes', '1', 'true'], true),
+                ];
+                // TK & produksi dijumlah per grup (header manual, hasil timbang).
+                $sumTk += (float) ($val($row, $cols['tk'] ?? null) ?? 0);
+                $sumProdPanen += (float) ($val($row, $cols['prod_panen'] ?? null) ?? 0);
+                $sumProdKirim += (float) ($val($row, $cols['prod_kirim'] ?? null) ?? 0);
+                $count++;
+            }
+            $lhp->update([
+                'lhp_tk_hk' => $sumTk ?: null,
+                'lhp_produksi_panen_kg' => $sumProdPanen ?: null,
+                'lhp_produksi_kirim_kg' => $sumProdKirim ?: null,
+            ]);
+            $service->sync($lhp, $rows);
+            $summary['upserted']++;
+        }
+
+        return $count;
+    }
+
     /** Cari baris header (mengandung "tanggal") dalam 8 baris pertama. */
     private function findHeaderRow(array $grid): ?int
     {
@@ -284,6 +365,10 @@ class LhpImportAction
             'hujan_siang' => $find(fn ($h) => $has($h, 'siang')),
             'hujan_malam' => $find(fn ($h) => $has($h, 'malam')),
             'blok_restan' => $find(fn ($h) => $has($h, 'blok restan')),
+            'blok' => $find(fn ($h) => $has($h, 'blok') && ! $has($h, 'restan')),
+            'bro_panen' => $find(fn ($h) => $has($h, 'brondolan') && $has($h, 'panen')),
+            'bro_kirim' => $find(fn ($h) => $has($h, 'brondolan') && $has($h, 'kirim')),
+            'restan' => $find(fn ($h) => $has($h, 'restan') && ! $has($h, 'blok')),
         ];
     }
 
@@ -295,6 +380,13 @@ class LhpImportAction
             }
             if (is_numeric($value)) {
                 return Carbon::instance(ExcelDate::excelToDateTimeObject((float) $value))->startOfDay();
+            }
+            // Format Indonesia dulu (strtotime mengira m/d/Y untuk pemisah "/").
+            foreach (['d/m/Y H:i:s', 'd/m/Y H:i', 'd/m/Y', 'd-m-Y H:i:s', 'd-m-Y H:i', 'd-m-Y'] as $f) {
+                try {
+                    return Carbon::createFromFormat($f, trim((string) $value))->startOfDay();
+                } catch (\Throwable) {
+                }
             }
 
             return Carbon::parse(trim((string) $value))->startOfDay();

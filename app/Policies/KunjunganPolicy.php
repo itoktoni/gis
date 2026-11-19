@@ -11,4 +11,9 @@ class KunjunganPolicy extends BasePolicy
     {
         return $this->accessProtected($user, __FUNCTION__) ? Response::deny() : Response::allow();
     }
+
+    public function import(User $user): Response
+    {
+        return $this->accessProtected($user, __FUNCTION__) ? Response::deny() : Response::allow();
+    }
 }
