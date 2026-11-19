@@ -12,11 +12,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Jeda minimal antar check-in VALID (jam)
+    | Akurasi GPS maksimal (meter)
     |--------------------------------------------------------------------------
-    | Check-in VALID berikutnya ditolak (HTTP 429) bila check-in VALID
-    | terakhir user masih dalam jeda ini. Check-in INVALID/PALSU tidak
-    | dihitung agar user bisa langsung coba lagi setelah pindah lokasi.
+    | Di atas nilai ini check-in tetap TERSIMPAN tapi statusnya tidak VALID
+    | (dicatat di failure_reason). Foto + koordinat tetap jadi bukti.
+    | Ubah via .env: ABSEN_MAX_ACCURACY_M.
+    */
+    'max_accuracy_m' => env('ABSEN_MAX_ACCURACY_M', 100),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Jeda minimal antar check-in VALID (jam) — NONAKTIF (tidak dipakai)
+    |--------------------------------------------------------------------------
+    | Dulu: check-in VALID berikutnya ditolak (HTTP 429) bila masih dalam jeda.
+    | Sekarang dimatikan agar user bisa absen berkali-kali (mis. salah foto
+    | bisa langsung ulangi). Config dibiarkan untuk kompatibilitas.
     */
     'min_interval_hours' => env('ABSEN_MIN_INTERVAL_HOURS', 3),
 

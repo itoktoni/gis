@@ -213,8 +213,12 @@ class AbsensiController extends Controller
             }
         }
 
-        if (isset($validated['accuracy']) && $validated['accuracy'] > 100) {
-            return response()->json(['message' => 'Akurasi GPS buruk (>100m), ulangi di area terbuka'], 422);
+        // Akurasi buruk TIDAK menggagalkan total (foto tetap bukti): dicatat sebagai
+        // failure agar status tidak VALID, tapi check-in tetap tersimpan.
+        if (isset($validated['accuracy']) && (float) $validated['accuracy'] > (float) config('absensi.max_accuracy_m', 100)) {
+            $msg = sprintf('Akurasi GPS buruk (±%.0f m, batas %d m) — pindah ke area terbuka bila berulang', (float) $validated['accuracy'], (int) config('absensi.max_accuracy_m', 100));
+            $failures[] = $msg;
+            $rangeFailures[] = $msg;
         }
 
         $payload = json_decode($validated['payload'], true);
@@ -326,6 +330,15 @@ class AbsensiController extends Controller
             }
         }
 
+        // Check-in BIASA (tanpa titik kunjungan): tanpa validasi — yang penting
+        // terkirim. Langsung VALID apa pun kondisi GPS/perangkatnya.
+        // Validasi titik tumpu (radius titik + area/polygon kebun + anti-fake)
+        // HANYA berlaku bila memakai titik kunjungan (kunjungan_id terisi).
+        if (empty($validated['kunjungan_id'])) {
+            $failures = [];
+            $rangeFailures = [];
+        }
+
         $authentic = empty($failures);
         // Di luar jangkauan (radius/polygon) = INVALID, bukan PALSU.
         // PALSU hanya untuk indikasi pemalsuan (mock, root, Xposed, dsb).
@@ -376,7 +389,8 @@ class AbsensiController extends Controller
 
         // Anti-replay: foto yang isinya sama persis sudah pernah dipakai check-in
         // (indikasi unduh lalu unggah ulang sebagai check-in baru).
-        if (Signature::where('content_hash', $result['content_hash'])->exists()) {
+        // Hanya untuk titik kunjungan; check-in biasa bebas tanpa validasi.
+        if (! empty($validated['kunjungan_id']) && Signature::where('content_hash', $result['content_hash'])->exists()) {
             $failures[] = 'Foto sudah pernah digunakan untuk check-in lain (indikasi unduh & unggah ulang)';
             if ($status === 'valid') {
                 $status = 'invalid';

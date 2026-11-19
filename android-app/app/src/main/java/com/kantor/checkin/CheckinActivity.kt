@@ -280,7 +280,9 @@ class CheckinActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.tvPrevDate)?.text = time
             findViewById<TextView>(R.id.tvPrevAddr)?.text = lastAddr ?: "-"
             findViewById<TextView>(R.id.tvPrevCoord)?.text =
-                if (loc == null) "Mencari GPS..." else "%.6f, %.6f".format(loc.latitude, loc.longitude)
+                if (loc == null) "Mencari GPS..."
+                else "%.6f, %.6f".format(loc.latitude, loc.longitude) +
+                    if (loc.hasAccuracy()) " (±%.0f m)".format(loc.accuracy) else ""
         } catch (_: Exception) { }
         // Kunci tombol kirim selama ancaman mock/developer terdeteksi (cek ringan tiap detik)
         val lt = lightThreat()
