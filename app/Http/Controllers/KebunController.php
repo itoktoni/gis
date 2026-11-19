@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\ControllerTrait;
+use App\Http\Requests\GeneralRequest;
 use App\Models\Distrik;
 use App\Models\Kebun;
 use App\Models\Objek;
@@ -10,7 +11,10 @@ use App\Models\Pt;
 
 class KebunController extends Controller
 {
-    use ControllerTrait;
+    use ControllerTrait {
+        postCreate as protected traitPostCreate;
+        postUpdate as protected traitPostUpdate;
+    }
 
     protected function share($data = [])
     {
@@ -36,6 +40,29 @@ class KebunController extends Controller
             'kebun_id_pt' => ['hasPt', ['pt_nama', 'pt_kode']],
             'kebun_id_distrik' => ['hasDistrik', ['distrik_nama', 'distrik_kode']],
         ];
+    }
+
+    public function postCreate(GeneralRequest $request)
+    {
+        $this->mergePolygon($request);
+
+        return $this->traitPostCreate($request);
+    }
+
+    public function postUpdate(GeneralRequest $request, $id)
+    {
+        $this->mergePolygon($request);
+
+        return $this->traitPostUpdate($request, $id);
+    }
+
+    /** Normalisasi GeoJSON mentah (tempel QGIS/UTM) ke Polygon lat/lng sebelum validasi. Tak dikenali = dikosongkan agar simpan tidak gagal. */
+    private function mergePolygon(GeneralRequest $request): void
+    {
+        if ($request->exists('kebun_polygon')) {
+            $raw = trim((string) $request->input('kebun_polygon'));
+            $request->merge(['kebun_polygon' => $raw === '' ? null : \App\Services\UtmConverter::normalizePolygon($raw)]);
+        }
     }
 
     protected function baseQuery()

@@ -30,7 +30,16 @@ class KunjunganController extends Controller
             'model' => $this->model,
             'userOptions' => User::getOptions(),
             'kebunOptions' => Kebun::getOptions(),
-            'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng', 'kebun_polygon as polygon')->get()->keyBy('id'),
+            'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng', 'kebun_polygon as polygon')->get()
+                ->map(fn ($r) => [
+                    'id' => $r->id,
+                    'nama' => $r->nama,
+                    'lat' => $r->lat,
+                    'lng' => $r->lng,
+                    // Normalisasi di sini juga: polygon kebun lama yang korup
+                    // tidak ikut ditempel ke form (auto-fill selalu JSON valid).
+                    'polygon' => \App\Services\UtmConverter::normalizePolygon($r->polygon),
+                ])->keyBy('id'),
             'objekOptions' => Objek::getOptions(),
             'objekGeo' => Objek::select('objek_id as id', 'objek_nama as nama', 'objek_lat as lat', 'objek_lng as lng')->get()->keyBy('id'),
             'statusOptions' => [
@@ -346,9 +355,11 @@ class KunjunganController extends Controller
             $request->merge(['kunjungan_radius_m' => 100]);
         }
         // Polygon GeoJSON mentah (tempel QGIS/UTM) dinormalisasi ke Polygon lat/lng.
-        if ($request->filled('kunjungan_polygon')) {
-            $norm = \App\Services\UtmConverter::normalizePolygon((string) $request->input('kunjungan_polygon'));
-            $request->merge(['kunjungan_polygon' => $norm ?? $request->input('kunjungan_polygon')]);
+        // Bila tidak dikenali (mis. tempelan terpotong), kosongkan agar
+        // simpan tidak gagal validasi — user bisa tempel ulang yang valid.
+        if ($request->exists('kunjungan_polygon')) {
+            $raw = trim((string) $request->input('kunjungan_polygon'));
+            $request->merge(['kunjungan_polygon' => $raw === '' ? null : \App\Services\UtmConverter::normalizePolygon($raw)]);
         }
         // Pilihan "-- Null --" (string kosong) disimpan sebagai NULL, bukan pending.
         if ($request->input('kunjungan_status') === '') {
