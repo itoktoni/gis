@@ -22,6 +22,7 @@
         "laravel/fortify": "^1.34",
         "laravel/framework": "^13.7",
         "laravel/sanctum": "^4.0",
+        "laravel/telescope": "^5.29",
         "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
         "livewire/flux": "^2.13.1",

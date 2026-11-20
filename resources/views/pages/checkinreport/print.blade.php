@@ -17,7 +17,7 @@
 <table>
 <tr><th>No</th><th>Tanggal</th><th>Karyawan</th><th>Status</th><th>Selisih (m)</th><th>Alamat</th></tr>
 @foreach($data as $i => $table)
-<tr><td>{{ $i+1 }}</td><td>{{ $table->created_at?->format('Y-m-d H:i') }}</td><td>{{ $table->hasUser?->name }}</td><td>{{ $table->status }}</td><td>{{ $table->selisih_radius_m ?? '-' }}</td><td>{{ $table->address }}</td></tr>
+<tr><td>{{ $i+1 }}</td><td>{{ $table->created_at?->format('Y-m-d H:i') }}</td><td>{{ $table->hasUser?->name }}</td><td>{{ $table->status }}</td><td>{{ formatJarak($table->selisih_radius_m, true) }}</td><td>{{ $table->address }}</td></tr>
 @endforeach
 </table>
 </body>

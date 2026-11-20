@@ -102,7 +102,7 @@ return [
             'items' => [
                 ['route' => 'settings.website', 'icon' => 'language', 'label' => 'Website'],
                 ['route' => 'settings.env', 'icon' => 'settings', 'label' => 'Environment'],
-                ['route' => 'native-bridge-test', 'icon' => 'phone_android', 'label' => 'NativeBridge Test'],
+                ['route' => 'apk-update', 'icon' => 'system_update', 'label' => 'Update APK', 'match' => ['apk-update*']],
             ],
         ],
     ],
@@ -116,6 +116,11 @@ return [
             ['route' => 'voucher.getTable', 'icon' => 'receipt_long', 'label' => 'Voucher'],
             ['route' => 'surat.getTable', 'icon' => 'mail', 'label' => 'Surat'],
             ['route' => 'kebun.getTable', 'icon' => 'map', 'label' => 'Kebun'],
+        ],
+        'user' => [
+            ['route' => 'dashboard', 'icon' => 'home', 'label' => 'Home'],
+            ['route' => 'kms-document.getTable', 'icon' => 'folder', 'label' => 'Dokumen'],
+            ['route' => 'kms-document.getChat', 'icon' => 'forum', 'label' => 'Tanya KMS'],
         ],
         'tanaman' => [
             ['route' => 'dashboard-kebun', 'icon' => 'dashboard', 'label' => 'Dash'],

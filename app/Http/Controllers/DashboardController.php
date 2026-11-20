@@ -59,6 +59,7 @@ class DashboardController extends Controller
         $lhpRecent = Lhp::with(['hasKebun.hasPt'])->orderByDesc('lhp_tanggal')->orderByDesc('lhp_id')->limit(10)->get();
 
         // --- Peta kebun (sama seperti halaman Kebun Sawit) ---
+        // Polygon versi ringan khusus tampilan (verifikasi tetap pakai data penuh).
         $kebunMap = Kebun::with('hasPt')
             ->withCount(['hasMasalah as has_masalah_aktif_count' => fn ($q) => $q->where('masalah_status', '!=', 'selesai')])
             ->get()
@@ -69,7 +70,7 @@ class DashboardController extends Controller
                 'masalah' => (int) ($row->has_masalah_aktif_count ?? 0),
                 'lat' => $row->kebun_lat,
                 'lng' => $row->kebun_lng,
-                'polygon' => $row->kebun_polygon,
+                'polygon' => \App\Services\UtmConverter::displayPolygon($row->kebun_polygon),
             ]);
         $objekMap = Objek::select('objek_nama', 'objek_jenis', 'objek_lat', 'objek_lng')->get();
 

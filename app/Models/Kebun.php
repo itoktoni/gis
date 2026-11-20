@@ -109,7 +109,7 @@ class Kebun extends BaseModel
             'kebun_status' => 'nullable|string|max:50',
             'kebun_lat' => 'nullable|numeric|between:-90,90',
             'kebun_lng' => 'nullable|numeric|between:-180,180',
-            'kebun_polygon' => ['nullable', 'string', 'max:50000', function ($attr, $value, $fail) {
+            'kebun_polygon' => ['nullable', 'string', 'max:500000', function ($attr, $value, $fail) {
                 if (empty($value)) {
                     return;
                 }
@@ -120,8 +120,8 @@ class Kebun extends BaseModel
                     return;
                 }
                 $type = $decoded['type'] ?? '';
-                if (! in_array($type, ['Polygon', 'Feature'])) {
-                    $fail('Polygon harus bertipe Polygon atau Feature.');
+                if (! in_array($type, ['Polygon', 'MultiPolygon', 'Feature', 'FeatureCollection'])) {
+                    $fail('Polygon harus bertipe Polygon / MultiPolygon / Feature / FeatureCollection.');
                 }
             }],
         ];

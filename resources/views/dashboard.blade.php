@@ -244,7 +244,8 @@
         (function () {
             function bootMap() {
             var rows = @json($kebunMap);
-            var map = L.map('dashboard-map').setView([-2.5, 118], 5);
+            // Renderer canvas: ribuan area (MultiPolygon banyak lokasi) tetap lancar.
+            var map = L.map('dashboard-map', { renderer: L.canvas() }).setView([-2.5, 118], 5);
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
             var bounds = [];
             rows.forEach(function (r) {

@@ -87,6 +87,10 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
         return view('pages.settings.native-bridge-test');
     })->name('native-bridge-test');
 
+    // Kelola APK update otomatis (khusus admin/developer, dicek di controller).
+    Route::get('/apk-update', [\App\Http\Controllers\ApkUpdateController::class, 'getForm'])->name('apk-update');
+    Route::post('/apk-update', [\App\Http\Controllers\ApkUpdateController::class, 'postSave'])->name('apk-update.save');
+
     Route::get('/settings/website', [WebsiteSettingController::class, 'index'])->name('settings.website');
     Route::post('/settings/website', [WebsiteSettingController::class, 'save'])->name('settings.website.save');
 

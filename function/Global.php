@@ -69,6 +69,44 @@ function formatQty($value): string
     return $formatted;
 }
 
+/**
+ * Format jarak meter: < 1000 → "850 m" / "+120 m" (plus opsional),
+ * >= 1000 → "1,5 km" (koma desimal ala Indonesia).
+ */
+function formatJarak($value, bool $withPlus = false): string
+{
+    if ($value === null || $value === '') {
+        return '-';
+    }
+    $num = (float) $value;
+    $prefix = ($withPlus && $num > 0) ? '+' : '';
+    if (abs($num) >= 1000) {
+        return $prefix.number_format($num / 1000, 1, ',', '.').' km';
+    }
+
+    return $prefix.round($num).' m';
+}
+
+/**
+ * Format tampilan teks berisi jarak meter ("30957 m dari batas" → "31,0 km dari batas").
+ * Hanya tampilan — data di database tidak diubah.
+ */
+function formatJarakText(?string $text): string
+{
+    if ($text === null || $text === '') {
+        return '';
+    }
+
+    return (string) preg_replace_callback('/(\d[\d.,]*)\s*m\b/u', function ($m) {
+        $num = (float) preg_replace('/[^\d.]/', '', $m[1]);
+        if ($num < 1000) {
+            return $m[0];
+        }
+
+        return formatJarak($num);
+    }, $text);
+}
+
 function formatLabel($value)
 {
     $label = Str::of($value);

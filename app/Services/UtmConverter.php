@@ -5,7 +5,9 @@ namespace App\Services;
 /**
  * Konversi koordinat UTM (default zona 49S, datum WGS84 — wilayah Kalteng)
  * ke lat/lng, plus normalisasi GeoJSON polygon yang ditempel user:
- * - FeatureCollection / MultiPolygon / UTM mentah → Polygon lat/lng tunggal.
+ * - FeatureCollection / MultiPolygon / UTM mentah → MultiPolygon lat/lng.
+ * - Tiap area dipertahankan terpisah (tidak digabung jadi 1 hull).
+ * - 1 area → Polygon tunggal (kompatibel data lama); >1 area → MultiPolygon.
  * - Hasil disederhanakan agar muat di kolom text (maks 50.000 char).
  */
 class UtmConverter
@@ -39,39 +41,14 @@ class UtmConverter
 
     /**
      * Normalisasi string GeoJSON mentah (hasil tempel/export QGIS) menjadi
-     * '{"type":"Polygon","coordinates":[...]}' dalam lat/lng.
+     * Polygon/MultiPolygon dalam lat/lng. QGIS: klik kanan layer → Export →
+     * Save Features As → format GeoJSON, CRS EPSG:4326 (atau biarkan UTM 49S,
+     * otomatis dikonversi). 1 area → Polygon; >1 area → MultiPolygon.
      * Mengembalikan null bila input bukan JSON polygon yang dikenali.
      */
     public static function normalizePolygon(?string $raw, int $maxChars = 48000): ?string
     {
-        if ($raw === null || trim($raw) === '') {
-            return null;
-        }
-        $gj = json_decode(trim($raw), true);
-        if (! is_array($gj) || ! isset($gj['type'])) {
-            return null;
-        }
-
-        // Kumpulkan semua ring luar sebagai [lng, lat].
-        $rings = [];
-        $collect = function ($coords) use (&$rings) {
-            foreach ($coords as $poly) {
-                if (is_array($poly) && isset($poly[0]) && is_array($poly[0]) && isset($poly[0][0]) && is_numeric($poly[0][0])) {
-                    $rings[] = $poly;
-                }
-            }
-        };
-        match ($gj['type']) {
-            'Polygon' => $collect([$gj['coordinates'][0] ?? []]),
-            'MultiPolygon' => $collect(array_map(fn ($p) => $p[0] ?? [], $gj['coordinates'] ?? [])),
-            'Feature' => self::collectGeometry($gj['geometry'] ?? [], $rings),
-            'FeatureCollection' => (function () use ($gj, &$rings) {
-                foreach ($gj['features'] ?? [] as $f) {
-                    self::collectGeometry($f['geometry'] ?? [], $rings);
-                }
-            })(),
-            default => null,
-        };
+        $rings = self::extractRings($raw);
         if ($rings === []) {
             return null;
         }
@@ -79,55 +56,140 @@ class UtmConverter
         // Deteksi UTM: koordinat easting/northing (ratusan ribu / jutaan).
         $sample = $rings[0][0];
         $isUtm = abs($sample[0]) > 180 || abs($sample[1]) > 90;
-        $pts = [];
+        $clean = [];
         foreach ($rings as $ring) {
+            $pts = [];
             foreach ($ring as $c) {
                 if (! is_array($c) || count($c) < 2 || ! is_numeric($c[0]) || ! is_numeric($c[1])) {
                     continue;
                 }
                 if ($isUtm) {
                     [$lat, $lon] = self::utmToLatLng((float) $c[0], (float) $c[1]);
-                    $pts[] = [$lon, $lat];
+                    $pts[] = [round($lon, 6), round($lat, 6)];
                 } else {
-                    $pts[] = [(float) $c[0], (float) $c[1]];
+                    $pts[] = [round((float) $c[0], 6), round((float) $c[1], 6)];
                 }
             }
+            // Buang titik duplikat berurutan, tutup ring.
+            $pts = array_values($pts);
+            if (count($pts) >= 3) {
+                $clean[] = self::close($pts);
+            }
         }
-        if (count($pts) < 3) {
+        if ($clean === []) {
             return null;
         }
 
-        // Sederhanakan: convex hull bila cincin banyak, lalu downsample.
-        $hull = self::convexHull($pts);
-        if (count($hull) < count($pts) / 4 && count($pts) > 500) {
-            $pts = $hull;
-        }
-        $geo = json_encode(['type' => 'Polygon', 'coordinates' => [self::close($pts)]]);
-        if (strlen($geo) > $maxChars) {
-            // Ambil hull + downsample sampai muat.
-            $pts = $hull;
-            while (count($pts) > 8) {
-                $geo = json_encode(['type' => 'Polygon', 'coordinates' => [self::close($pts)]]);
-                if (strlen($geo) <= $maxChars) {
-                    break;
-                }
-                $pts = array_values(array_filter($pts, fn ($_, $i) => $i % 2 === 0, ARRAY_FILTER_USE_BOTH));
-            }
-            $geo = json_encode(['type' => 'Polygon', 'coordinates' => [self::close($pts)]]);
-        }
+        // Sederhanakan per ring sampai total muat (alokasi proporsional, 1 pass per iterasi).
+        [$clean, $geo] = self::fitBudget($clean, $maxChars);
 
         return strlen($geo) <= $maxChars ? $geo : null;
     }
 
-    private static function collectGeometry(array $geom, array &$rings): void
+    /** Kecilkan ring secara proporsional agar total char muat budget (target 90% agar konvergen). */
+    private static function fitBudget(array $rings, int $maxChars): array
     {
-        if (($geom['type'] ?? '') === 'Polygon') {
-            $rings[] = $geom['coordinates'][0] ?? [];
-        } elseif (($geom['type'] ?? '') === 'MultiPolygon') {
-            foreach ($geom['coordinates'] ?? [] as $p) {
-                $rings[] = $p[0] ?? [];
+        $geo = self::encodeRings($rings);
+        for ($pass = 0; $pass < 8 && strlen($geo) > $maxChars; $pass++) {
+            $ratio = ($maxChars * 0.9) / strlen($geo);
+            $shrunk = false;
+            foreach ($rings as $i => $ring) {
+                // Minimal segitiga (3 unik + penutup).
+                $keep = max(3, (int) floor(count($ring) * $ratio));
+                if ($keep < count($ring)) {
+                    $rings[$i] = self::stride($ring, $keep);
+                    $shrunk = true;
+                }
             }
+            if (! $shrunk) {
+                break;
+            }
+            $geo = self::encodeRings($rings);
         }
+
+        return [$rings, $geo];
+    }
+
+    /** Ambil $keep titik tersebar merata dari ring, lalu tutup. */
+    private static function stride(array $ring, int $keep): array
+    {
+        // Buang titik penutup duplikat dulu agar sampling merata.
+        if (count($ring) > 1 && $ring[0] === end($ring)) {
+            array_pop($ring);
+        }
+        $n = count($ring);
+        if ($keep >= $n) {
+            return self::close($ring);
+        }
+        $out = [];
+        for ($k = 0; $k < $keep; $k++) {
+            $out[] = $ring[(int) floor($k * $n / $keep)];
+        }
+
+        return self::close($out);
+    }
+
+    /** Kumpulkan semua ring luar ([lng, lat]) dari Polygon/MultiPolygon/Feature/FeatureCollection. */
+    public static function extractRings(?string $raw): array
+    {
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+        $gj = json_decode(trim($raw), true);
+        if (! is_array($gj) || ! isset($gj['type'])) {
+            return [];
+        }
+        $rings = [];
+        $fromCoords = function ($type, $coords) use (&$rings) {
+            if ($type === 'Polygon') {
+                if (isset($coords[0]) && is_array($coords[0])) {
+                    $rings[] = $coords[0];
+                }
+            } elseif ($type === 'MultiPolygon') {
+                foreach ($coords ?? [] as $poly) {
+                    if (isset($poly[0]) && is_array($poly[0])) {
+                        $rings[] = $poly[0];
+                    }
+                }
+            }
+        };
+        match ($gj['type']) {
+            'Polygon', 'MultiPolygon' => $fromCoords($gj['type'], $gj['coordinates'] ?? null),
+            'Feature' => $fromCoords($gj['geometry']['type'] ?? '', $gj['geometry']['coordinates'] ?? null),
+            'FeatureCollection' => (function () use ($gj, $fromCoords) {
+                foreach ($gj['features'] ?? [] as $f) {
+                    $fromCoords($f['geometry']['type'] ?? '', $f['geometry']['coordinates'] ?? null);
+                }
+            })(),
+            default => null,
+        };
+
+        return array_values(array_filter($rings, fn ($r) => is_array($r) && count($r) >= 3));
+    }
+
+    /** Encode ring luar: 1 ring → Polygon, >1 ring → MultiPolygon. */
+    public static function encodeRings(array $rings): string
+    {
+        if (count($rings) === 1) {
+            return json_encode(['type' => 'Polygon', 'coordinates' => [$rings[0]]]);
+        }
+
+        return json_encode(['type' => 'MultiPolygon', 'coordinates' => array_map(fn ($r) => [$r], $rings)]);
+    }
+
+    /**
+     * Versi ringan polygon untuk TAMPILAN peta (bukan verifikasi).
+     * Semua area tetap ada, hanya titiknya dijarangkan agar halaman ringan.
+     */
+    public static function displayPolygon(?string $raw, int $maxChars = 60000): ?string
+    {
+        $rings = self::extractRings($raw);
+        if ($rings === []) {
+            return null;
+        }
+        [$rings, $geo] = self::fitBudget($rings, $maxChars);
+
+        return strlen($geo) <= $maxChars ? $geo : null;
     }
 
     /** Convex hull (Andrew monotone chain), input [lng, lat]. */
@@ -168,27 +230,25 @@ class UtmConverter
         return $ring;
     }
 
-    /** Titik tengah (rata-rata ring luar) polygon GeoJSON — untuk isi lat/lng otomatis. */
+    /** Titik tengah (rata-rata semua ring luar) polygon GeoJSON — untuk isi lat/lng otomatis. */
     public static function centroidOfPolygon(?string $polygonJson): ?array
     {
-        if ($polygonJson === null || trim($polygonJson) === '') {
-            return null;
-        }
-        $gj = json_decode(trim($polygonJson), true);
-        $ring = $gj['coordinates'][0] ?? null;
-        if (! is_array($ring) || count($ring) < 3) {
+        $rings = self::extractRings($polygonJson);
+        if ($rings === []) {
             return null;
         }
         $sumLat = 0.0;
         $sumLng = 0.0;
         $n = 0;
-        foreach ($ring as $c) {
-            if (! is_array($c) || ! isset($c[0], $c[1]) || ! is_numeric($c[0]) || ! is_numeric($c[1])) {
-                continue;
+        foreach ($rings as $ring) {
+            foreach ($ring as $c) {
+                if (! is_array($c) || ! isset($c[0], $c[1]) || ! is_numeric($c[0]) || ! is_numeric($c[1])) {
+                    continue;
+                }
+                $sumLng += (float) $c[0];
+                $sumLat += (float) $c[1];
+                $n++;
             }
-            $sumLng += (float) $c[0];
-            $sumLat += (float) $c[1];
-            $n++;
         }
         if ($n === 0) {
             return null;

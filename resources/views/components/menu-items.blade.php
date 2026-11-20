@@ -9,12 +9,14 @@
     $prefixOf = fn ($routeName) => str_contains($routeName, '.') ? str($routeName)->before('.')->toString() : $routeName;
 
     $isBlocked = function ($routeName) use ($role, $restrict, $prefixOf) {
-        // admin/developer/user/editor tidak ada di matrix -> lihat semua.
+        // admin/developer/editor tidak ada di matrix -> lihat semua.
         if (! isset($restrict[$role])) {
             return false;
         }
 
-        return ! empty($restrict[$role][$prefixOf($routeName)]);
+        // Menu ditautkan ke halaman tabel: sembunyikan hanya jika aksi 'table' di-deny.
+        // (Deny parsial seperti create/update saja tidak menyembunyikan menu.)
+        return in_array('table', $restrict[$role][$prefixOf($routeName)] ?? [], true);
     };
 @endphp
 

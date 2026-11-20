@@ -11,7 +11,7 @@
             return false;
         }
 
-        return ! empty($restrict[$role][$prefixOf($item['route'] ?? '')]);
+        return in_array('table', $restrict[$role][$prefixOf($item['route'] ?? '')] ?? [], true);
     })->values();
 
     $centerIndex = intdiv($bottomNav->count(), 2);

@@ -194,7 +194,7 @@ class AbsensiController extends Controller
                     $failures[] = $msg;
                     $rangeFailures[] = $msg;
                 } elseif ($dPoly > $tol) {
-                    $msg = sprintf('Di luar area "%s" (%.0f m dari batas)', $kunjungan->kunjungan_nama, $dPoly);
+                    $msg = sprintf('Di luar area "%s" (%s dari batas)', $kunjungan->kunjungan_nama, formatJarak($dPoly));
                     $failures[] = $msg;
                     $rangeFailures[] = $msg;
                 }
@@ -207,7 +207,7 @@ class AbsensiController extends Controller
                 $jarakM = round($dist, 1);
                 $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
                 if ($dist > (float) $kunjungan->kunjungan_radius_m) {
-                    $msg = sprintf('Di luar titik "%s" (%.0f m, batas %d m)', $kunjungan->kunjungan_nama, $dist, $kunjungan->kunjungan_radius_m);
+                    $msg = sprintf('Di luar titik "%s" (%s, batas %s)', $kunjungan->kunjungan_nama, formatJarak($dist), formatJarak($kunjungan->kunjungan_radius_m));
                     $failures[] = $msg;
                     $rangeFailures[] = $msg;
                 }
@@ -227,8 +227,8 @@ class AbsensiController extends Controller
                     $failures[] = sprintf('Polygon kebun "%s" rusak/tidak terbaca', $kebun->kebun_nama ?? '-');
                 } elseif ($edge > $tol) {
                     $msg = sprintf(
-                        'Di luar area kebun "%s" (±%.0f m dari batas, toleransi %d m)',
-                        $kebun->kebun_nama ?? '-', $edge, (int) $tol
+                        'Di luar area kebun "%s" (±%s dari batas, toleransi %d m)',
+                        $kebun->kebun_nama ?? '-', formatJarak($edge), (int) $tol
                     );
                     $failures[] = $msg;
                     $rangeFailures[] = $msg;
@@ -517,21 +517,38 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Jarak (meter) dari titik ke polygon GeoJSON.
-     * 0 bila di dalam polygon; jarak ke sisi terdekat bila di luar.
+     * Jarak (meter) dari titik ke polygon GeoJSON (Polygon / MultiPolygon /
+     * Feature / FeatureCollection — semua area diperiksa).
+     * 0 bila di dalam salah satu area; jarak ke sisi terdekat bila di luar.
      * null bila polygon tidak bisa dibaca.
      */
     public static function distToPolygonM(float $lat, float $lng, string $polygonJson): ?float
     {
-        $gj = json_decode($polygonJson, true);
-        if (! is_array($gj)) return null;
-        $geom = ($gj['type'] ?? null) === 'Feature' ? ($gj['geometry'] ?? null) : $gj;
-        $ring = $geom['coordinates'][0] ?? null;
-        if (! is_array($ring) || count($ring) < 4) return null;
+        $rings = \App\Services\UtmConverter::extractRings($polygonJson);
+        if ($rings === []) return null;
 
-        // Ray casting: [lng, lat] per GeoJSON
+        foreach ($rings as $ring) {
+            if (self::ringContains($lat, $lng, $ring)) return 0.0;
+        }
+
+        $min = null;
+        foreach ($rings as $ring) {
+            $n = count($ring);
+            for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
+                $d = self::distToSegmentM($lat, $lng, (float) $ring[$j][1], (float) $ring[$j][0], (float) $ring[$i][1], (float) $ring[$i][0]);
+                if ($min === null || $d < $min) $min = $d;
+            }
+        }
+
+        return $min;
+    }
+
+    /** Ray casting: [lng, lat] per GeoJSON. */
+    private static function ringContains(float $lat, float $lng, array $ring): bool
+    {
         $inside = false;
         $n = count($ring);
+        if ($n < 4) return false;
         for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
             $xi = (float) $ring[$i][0]; $yi = (float) $ring[$i][1];
             $xj = (float) $ring[$j][0]; $yj = (float) $ring[$j][1];
@@ -540,15 +557,8 @@ class AbsensiController extends Controller
                 $inside = ! $inside;
             }
         }
-        if ($inside) return 0.0;
 
-        $min = null;
-        for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
-            $d = self::distToSegmentM($lat, $lng, (float) $ring[$j][1], (float) $ring[$j][0], (float) $ring[$i][1], (float) $ring[$i][0]);
-            if ($min === null || $d < $min) $min = $d;
-        }
-
-        return $min;
+        return $inside;
     }
 
     /** Jarak meter dari titik ke segmen garis (aproksimasi equirectangular, akurat untuk skala kecil). */

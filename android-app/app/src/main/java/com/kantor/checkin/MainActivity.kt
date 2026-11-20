@@ -101,6 +101,8 @@ class MainActivity : AppCompatActivity() {
         askNotifPermission()
         // Muat config pengingat dari server setiap aplikasi dibuka
         ReminderScheduler.refresh(this)
+        // Cek update otomatis (diam, hanya popup jika ada versi baru)
+        try { AppUpdateHelper.check(this, manual = false) } catch (_: Exception) { }
     }
 
     /** Izin notifikasi (Android 13+), sekali saja. */

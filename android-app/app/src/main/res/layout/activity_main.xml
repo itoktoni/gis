@@ -236,10 +236,10 @@
                     style="@style/APN.Card" app:cardElevation="2dp"
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📷" android:textSize="48sp"
+                        android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📷" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Check-In" android:textSize="17sp" android:textStyle="bold"
+                        <TextView android:text="Check-In" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Foto + kirim kehadiran" android:textSize="11sp"
@@ -257,10 +257,10 @@
                     style="@style/APN.Card" app:cardElevation="2dp"
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📍" android:textSize="48sp"
+                        android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📍" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Titik Kunjungan" android:textSize="17sp" android:textStyle="bold"
+                        <TextView android:text="Titik Kunjungan" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Peta + rute kebun" android:textSize="11sp"
@@ -278,10 +278,10 @@
                     style="@style/APN.Card" app:cardElevation="2dp"
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="📋" android:textSize="48sp"
+                        android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="📋" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Laporan" android:textSize="17sp" android:textStyle="bold"
+                        <TextView android:text="Laporan" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Riwayat check-in" android:textSize="11sp"
@@ -299,10 +299,10 @@
                     style="@style/APN.Card" app:cardElevation="2dp"
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="⚙️" android:textSize="48sp"
+                        android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="⚙️" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Server" android:textSize="17sp" android:textStyle="bold"
+                        <TextView android:text="Server" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Atur alamat server" android:textSize="11sp"
@@ -321,10 +321,10 @@
                     app:strokeWidth="1.5dp" app:strokeColor="@color/apn_primary"
                     android:visibility="gone">
                     <LinearLayout android:orientation="vertical" android:gravity="center"
-                        android:padding="20dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-                        <TextView android:text="🔄" android:textSize="48sp"
+                        android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
+                        <TextView android:text="🔄" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:id="@+id/tvSyncLabel" android:text="Sync" android:textSize="17sp" android:textStyle="bold"
+                        <TextView android:id="@+id/tvSyncLabel" android:text="Sync" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         <TextView android:text="Kirim antrean offline" android:textSize="11sp"

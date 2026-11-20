@@ -67,9 +67,7 @@
                 return $s === 'invalid' ? 'DI LUAR JANGKAUAN' : ($s === 'fake' ? 'PALSU' : 'VALID');
             };
             $fmtSelisih = function ($v) {
-                if ($v === null) return '-';
-                $v = (float) $v;
-                return ($v > 0 ? '+' : '').round($v).' m';
+                return formatJarak($v, true);
             };
         @endphp
 

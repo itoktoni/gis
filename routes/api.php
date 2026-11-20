@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\ApkUpdateController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
+
+// Info versi APK publik (untuk update otomatis tanpa Play Store, tanpa login).
+// Datanya dikelola lewat halaman web "Update APK" (khusus admin/developer).
+Route::get('/app/version', [ApkUpdateController::class, 'version']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

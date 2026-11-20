@@ -8,6 +8,7 @@
     'preview' => false,
     'value' => null,
     'helper' => null,
+    'hint' => null,
 ])
 @php
     $label = $label ?? formatLabel($name);
@@ -48,7 +49,7 @@
         ondrop="event.preventDefault();this.classList.remove('border-primary','bg-primary/5');document.getElementById('{{ $uid }}').files=event.dataTransfer.files">
         <span class="material-symbols-outlined text-3xl text-on-surface-variant mb-2 block">{{ $preview ? 'add_a_photo' : 'upload_file' }}</span>
         <p class="font-body-sm text-body-sm text-on-surface-variant mb-1">{{ $preview ? 'Drag & drop atau klik untuk pilih foto baru' : 'Drag & drop files here' }}</p>
-        <p class="font-label-caps text-label-caps text-outline">JPG, PNG, WEBP — Maks 2MB</p>
+        <p class="font-label-caps text-label-caps text-outline">{{ $hint ?? 'JPG, PNG, WEBP — Maks 2MB' }}</p>
         <input type="file" id="{{ $uid }}" name="{{ $name }}" class="hidden"
             {{ $multiple ? 'multiple' : '' }}
             accept="{{ $accept }}"

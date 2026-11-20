@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HP normal (lebar >= 360dp): ukuran nyaman -->
+    <dimen name="preview_h">380dp</dimen>
+    <dimen name="menu_emoji">40sp</dimen>
+    <dimen name="menu_title">15sp</dimen>
+    <dimen name="menu_pad">14dp</dimen>
+    <dimen name="btn_h">50dp</dimen>
+    <dimen name="page_pad">12dp</dimen>
+</resources>

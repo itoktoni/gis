@@ -64,8 +64,9 @@
                 if (lngInput && row.lng !== null) lngInput.value = row.lng;
             });
             // Pilih kebun -> isi nama + lat/lng bila masih kosong + polygon area.
-            if (kebunSelect) kebunSelect.addEventListener('change', function () {
-                var row = kebunData[this.value];
+            // TomSelect mengganti select asli: dengarkan keduanya (native + instance).
+            function onKebunChange(val) {
+                var row = kebunData[val];
                 if (!row) return;
                 if (namaInput && !namaInput.value && row.nama) namaInput.value = 'Kunjungan ' + row.nama;
                 if (latInput && !latInput.value && row.lat !== null) latInput.value = row.lat;
@@ -78,7 +79,16 @@
                         polyArea.dataset.auto = '1';
                     }
                 }
-            });
+            }
+            if (kebunSelect) kebunSelect.addEventListener('change', function () { onKebunChange(this.value); });
+            (function hookKebunTom(tries) {
+                if (!kebunSelect) return;
+                if (kebunSelect.tomselect) {
+                    kebunSelect.tomselect.on('change', onKebunChange);
+                } else if (tries > 0) {
+                    setTimeout(function () { hookKebunTom(tries - 1); }, 300);
+                }
+            })(20);
             // Ketikan manual = bukan auto lagi (ganti kebun tak menimpa).
             var polyAreaInit = document.getElementById('kunjungan_polygon');
             if (polyAreaInit) polyAreaInit.addEventListener('input', function () {

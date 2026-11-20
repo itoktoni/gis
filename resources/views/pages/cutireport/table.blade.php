@@ -1,17 +1,27 @@
 <x-layouts::app>
     <x-breadcrumb :items="[['url' => '/dashboard', 'label' => 'Home'], ['url' => '', 'label' => 'Report Cuti']]" />
-    <x-card :label="'Filter Report Cuti'">
+
+    <div class="content mt-4 lg:mt-0">
         <form method="GET" action="{{ moduleRoute('getPrint') }}" target="_blank">
-            <div class="grid grid-cols-12 gap-3">
-                <div class="col-span-3"><label>Dari</label><input type="date" name="dari" class="input" value="{{ request('dari') }}" /></div>
-                <div class="col-span-3"><label>Sampai</label><input type="date" name="sampai" class="input" value="{{ request('sampai') }}" /></div>
-                <div class="col-span-3"><label>Karyawan</label><select name="cuti_id_user" class="input"><option value="">Semua</option>@foreach($userOptions as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach</select></div>
-                <div class="col-span-3"><label>Status</label><select name="cuti_status" class="input"><option value="">Semua</option><option value="pending">Menunggu</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select></div>
-            </div>
-            <div class="mt-4 flex gap-2">
-                <button type="submit" class="btn btn-primary">Tampilkan / Print</button>
-                <button type="submit" formaction="{{ moduleRoute('getExportExcel') }}" class="btn">Export Excel</button>
-            </div>
+            <x-card label="Filter Report Cuti">
+                <x-input col="3" type="date" name="dari" label="Dari Tanggal" :value="request('dari', now()->startOfMonth()->toDateString())" />
+                <x-input col="3" type="date" name="sampai" label="Sampai Tanggal" :value="request('sampai', now()->toDateString())" />
+                <x-select col="3" name="cuti_id_user" label="Karyawan" :options="['' => 'Semua'] + $userOptions" :placeholder="false" :default="request('cuti_id_user')" />
+                <x-select col="3" name="cuti_status" label="Status" :placeholder="false"
+                    :options="['' => 'Semua', 'pending' => 'Menunggu', 'approved' => 'Disetujui', 'rejected' => 'Ditolak']"
+                    :default="request('cuti_status')" />
+            </x-card>
+
+            <x-action :action="['print']">
+                <button type="submit" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-all hover:brightness-110">
+                    <span class="material-symbols-outlined text-xl">visibility</span> Tampilkan
+                </button>
+                <button type="submit" formaction="{{ moduleRoute('getExportExcel') }}" formtarget="_self" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">download</span> Export Excel
+                </button>
+            </x-action>
         </form>
-    </x-card>
+
+        <div class="h-16"></div>
+    </div>
 </x-layouts::app>

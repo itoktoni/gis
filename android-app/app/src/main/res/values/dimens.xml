@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HP kecil / jadul: compact agar tidak membesar -->
+    <dimen name="preview_h">260dp</dimen>
+    <dimen name="menu_emoji">32sp</dimen>
+    <dimen name="menu_title">13sp</dimen>
+    <dimen name="menu_pad">10dp</dimen>
+    <dimen name="btn_h">46dp</dimen>
+    <dimen name="page_pad">8dp</dimen>
+</resources>

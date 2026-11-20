@@ -42,7 +42,12 @@
                     <div id="titik-list" class="mt-2 space-y-1 text-xs"></div>
                 </div>
 
-                <x-textarea col="12" name="kebun_polygon" label="Polygon GeoJSON" />
+                <x-textarea col="12" name="kebun_polygon" label="Polygon GeoJSON"
+                    helper="Tempel hasil export QGIS (GeoJSON, 1 atau banyak area) atau upload file .geojson. Area banyak otomatis tersimpan sebagai MultiPolygon." />
+
+                <div class="col-span-12">
+                    <input type="file" id="kebun_polygon_file" accept=".geojson,.json" class="text-xs" />
+                </div>
 
             @endbind
         </x-card>
@@ -116,15 +121,27 @@
             );
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            var points = []; // [lat, lng]
+            var points = []; // [lat, lng] — ring yang sedang diedit
             var markers = [];
             var polygon = L.polygon([], { weight: 3, fillOpacity: 0.45 }).addTo(map);
+            var otherRings = []; // ring [lng,lat] lain (read-only, dari MultiPolygon)
+            var otherLayer = L.geoJSON(null, { style: { color: '#9333ea', weight: 2, fillColor: '#9333ea', fillOpacity: 0.25 } }).addTo(map);
             var marking = true;
 
-            function geojson() {
+            function currentGeometry() {
                 var ring = points.map(function (p) { return [p[1], p[0]]; });
                 if (ring.length) ring.push(ring[0].slice());
-                return { type: 'Polygon', coordinates: [ring] };
+                var all = ring.length ? [ring].concat(otherRings) : otherRings.slice();
+                if (all.length > 1) return { type: 'MultiPolygon', coordinates: all.map(function (r) { return [r]; }) };
+                return { type: 'Polygon', coordinates: all.length ? [all[0]] : [] };
+            }
+
+            function geojson() { return currentGeometry(); }
+
+            function redrawOthers() {
+                otherLayer.clearLayers();
+                if (!otherRings.length) return;
+                otherLayer.addData({ type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: otherRings.map(function (r) { return [r]; }) } });
             }
 
             function redraw() {
@@ -143,7 +160,8 @@
 
             function sync() {
                 redraw();
-                if (points.length < 3) {
+                redrawOthers();
+                if (points.length < 3 && !otherRings.length) {
                     if (points.length === 0) polyInput.value = '';
                     renderList();
                     return;
@@ -268,20 +286,54 @@
                 }, { enableHighAccuracy: true, timeout: 15000 });
             });
 
-            // Muat polygon lama (mode edit) atau tempelan GeoJSON
+            // Muat polygon lama (mode edit) atau tempelan GeoJSON.
+            // MultiPolygon (export QGIS banyak area): ring terbesar bisa diedit,
+            // sisanya tampil read-only dan ikut tersimpan saat Save.
+            function ringsOf(gj) {
+                var geom = gj.type === 'Feature' ? gj.geometry : gj;
+                if (!geom) return [];
+                if (geom.type === 'Polygon') return [geom.coordinates[0] || []];
+                if (geom.type === 'MultiPolygon') {
+                    return (geom.coordinates || []).map(function (p) { return p[0] || []; });
+                }
+                if (gj.type === 'FeatureCollection') {
+                    var out = [];
+                    (gj.features || []).forEach(function (f) {
+                        ringsOf(f).forEach(function (r) { out.push(r); });
+                    });
+                    return out;
+                }
+                return [];
+            }
             function loadFromTextarea(fit) {
                 var raw = (polyInput.value || '').trim();
-                if (!raw) { points = []; redraw(); renderList(); return; }
+                if (!raw) { points = []; otherRings = []; redraw(); redrawOthers(); renderList(); return; }
                 try {
                     var gj = JSON.parse(raw);
-                    var geom = gj.type === 'Feature' ? gj.geometry : gj;
-                    var ring = (geom.coordinates && geom.coordinates[0]) || [];
-                    points = ring.slice(0, -1).map(function (c) { return [c[1], c[0]]; });
-                    redraw(); renderList();
-                    if (fit && points.length) map.fitBounds(polygon.getBounds().pad(0.2));
+                    var rings = ringsOf(gj).filter(function (r) { return r.length >= 3; });
+                    rings.sort(function (a, b) { return b.length - a.length; });
+                    var first = rings.shift() || [];
+                    points = first.slice(0, -1).map(function (c) { return [c[1], c[0]]; });
+                    otherRings = rings;
+                    redraw(); redrawOthers(); renderList();
+                    if (fit) {
+                        var b = null;
+                        try { b = polygon.getBounds().extend(otherLayer.getBounds()); } catch (e) { b = null; }
+                        if (b && b.isValid && b.isValid()) map.fitBounds(b.pad(0.2));
+                        else if (points.length) map.fitBounds(polygon.getBounds().pad(0.2));
+                    }
                 } catch (e) {}
             }
             polyInput.addEventListener('change', function () { loadFromTextarea(true); });
+            // File .geojson (export QGIS) -> tempel ke textarea.
+            var kebunPolyFile = document.getElementById('kebun_polygon_file');
+            if (kebunPolyFile) kebunPolyFile.addEventListener('change', function () {
+                var f = this.files && this.files[0];
+                if (!f) return;
+                var r = new FileReader();
+                r.onload = function () { polyInput.value = r.result; loadFromTextarea(true); };
+                r.readAsText(f);
+            });
             loadFromTextarea(!!polyInput.value.trim());
             } // end bootMap
 

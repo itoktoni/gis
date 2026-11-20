@@ -170,10 +170,10 @@ class VisitActivity : AppCompatActivity() {
         cardMaps.clear()
         for (p in visits) {
             val d = myLoc?.let { distM(it.latitude, it.longitude, p.latitude, p.longitude) }
-            // Bila titik punya polygon: dalam jangkauan = di dalam polygon (toleransi ikut server).
-            val poly = parsePolygonPoints(p.polygon)
-            val inRange = if (poly != null && myLoc != null) {
-                pointInPolygon(myLoc!!.latitude, myLoc!!.longitude, poly)
+            // Bila titik punya polygon: dalam jangkauan = di dalam SALAH SATU area (toleransi ikut server).
+            val rings = parsePolygonRings(p.polygon)
+            val inRange = if (!rings.isNullOrEmpty() && myLoc != null) {
+                rings.any { pointInPolygon(myLoc!!.latitude, myLoc!!.longitude, it) }
             } else d != null && d <= p.radius_m
             listBox.addView(visitCard(p, d, inRange))
         }
@@ -328,21 +328,33 @@ class VisitActivity : AppCompatActivity() {
         }
         Polygon().apply {
             // Polygon GeoJSON per titik bila ada (menggantikan radius); else lingkaran radius.
-            val polyPts = parsePolygonPoints(p.polygon)
-            if (polyPts != null) {
-                setPoints(polyPts)
+            val polyRings = parsePolygonRings(p.polygon)
+            if (!polyRings.isNullOrEmpty()) {
+                // Hanya ring pertama digambar sebagai overlay utama...
+                setPoints(polyRings[0])
                 fillPaint.color = 0x332196F3
                 outlinePaint.color = 0xFF1976D2.toInt()
                 outlinePaint.strokeWidth = 4f
-                // Zoom pas ke batas polygon.
-                try { mv.zoomToBoundingBox(boundingBox(polyPts).increaseByScale(1.2f), false) } catch (_: Exception) {
+                mv.overlays.add(this)
+                // ...ring sisanya sebagai overlay tambahan.
+                for (i in 1 until polyRings.size) {
+                    Polygon().apply {
+                        setPoints(polyRings[i])
+                        fillPaint.color = 0x332196F3
+                        outlinePaint.color = 0xFF1976D2.toInt()
+                        outlinePaint.strokeWidth = 4f
+                        mv.overlays.add(this)
+                    }
+                }
+                // Zoom pas ke batas semua area.
+                try { mv.zoomToBoundingBox(boundingBox(polyRings.flatten()).increaseByScale(1.2f), false) } catch (_: Exception) {
                     mv.controller.setZoom(15.0)
                     mv.controller.setCenter(GeoPoint(p.latitude, p.longitude))
                 }
             } else {
                 setPoints(Polygon.pointsAsCircle(GeoPoint(p.latitude, p.longitude), p.radius_m.toDouble()))
+                mv.overlays.add(this)
             }
-            mv.overlays.add(this)
         }
         myLoc?.let { addMeMarker(mv, it) }
         mv.invalidate()
@@ -350,33 +362,53 @@ class VisitActivity : AppCompatActivity() {
         return mv
     }
 
-    /** Parse GeoJSON Polygon/Feature -> daftar GeoPoint ring luar. Null bila tidak valid. */
-    private fun parsePolygonPoints(raw: String?): List<GeoPoint>? {
+    /** Parse GeoJSON Polygon/MultiPolygon/Feature/FeatureCollection -> daftar ring luar.
+     *  Null bila tidak valid. Kompatibel data lama (Polygon tunggal). */
+    private fun parsePolygonRings(raw: String?): List<List<GeoPoint>>? {
         if (raw.isNullOrBlank()) return null
         return try {
             val gj = org.json.JSONObject(raw)
-            var coords = gj.optJSONArray("coordinates")
+            val rings = mutableListOf<org.json.JSONArray>()
+            fun addRing(a: org.json.JSONArray?) {
+                if (a != null && a.length() >= 3) rings.add(a)
+            }
+            fun addCoords(type: String, coords: org.json.JSONArray?) {
+                if (coords == null) return
+                when (type) {
+                    "Polygon" -> addRing(coords.optJSONArray(0))
+                    "MultiPolygon" -> for (i in 0 until coords.length()) addRing(coords.optJSONArray(i)?.optJSONArray(0))
+                }
+            }
             when (gj.optString("type")) {
-                "Feature" -> coords = gj.optJSONObject("geometry")?.optJSONArray("coordinates")
-                "MultiPolygon" -> coords = coords?.optJSONArray(0)
-                // "Polygon" / lainnya: pakai langsung
+                "Feature" -> {
+                    val g = gj.optJSONObject("geometry")
+                    if (g != null) addCoords(g.optString("type"), g.optJSONArray("coordinates"))
+                }
+                "FeatureCollection" -> {
+                    val fs = gj.optJSONArray("features")
+                    if (fs != null) for (i in 0 until fs.length()) {
+                        val g = fs.optJSONObject(i)?.optJSONObject("geometry") ?: continue
+                        addCoords(g.optString("type"), g.optJSONArray("coordinates"))
+                    }
+                }
+                else -> addCoords(gj.optString("type"), gj.optJSONArray("coordinates"))
             }
-            // coordinates Polygon = [ring]; ambil ring luar.
-            var ring = coords?.optJSONArray(0) ?: return null
-            // Bila masih nested (MultiPolygon sisa) turun satu level.
-            if (ring.length() > 0 && ring.opt(0) is org.json.JSONArray && (ring.optJSONArray(0)?.opt(0) is org.json.JSONArray)) {
-                ring = ring.optJSONArray(0) ?: return null
+            val out = rings.mapNotNull { ring ->
+                val pts = mutableListOf<GeoPoint>()
+                for (i in 0 until ring.length()) {
+                    val c = ring.optJSONArray(i) ?: continue
+                    val lng = c.optDouble(0, Double.NaN); val lat = c.optDouble(1, Double.NaN)
+                    if (lat.isNaN() || lng.isNaN()) continue
+                    pts.add(GeoPoint(lat, lng))
+                }
+                if (pts.size >= 3) pts else null
             }
-            val pts = mutableListOf<GeoPoint>()
-            for (i in 0 until ring.length()) {
-                val c = ring.optJSONArray(i) ?: continue
-                val lng = c.optDouble(0, Double.NaN); val lat = c.optDouble(1, Double.NaN)
-                if (lat.isNaN() || lng.isNaN()) continue
-                pts.add(GeoPoint(lat, lng))
-            }
-            if (pts.size >= 3) pts else null
+            if (out.isNotEmpty()) out else null
         } catch (_: Exception) { null }
     }
+
+    /** Kompatibilitas: ring pertama saja. */
+    private fun parsePolygonPoints(raw: String?): List<GeoPoint>? = parsePolygonRings(raw)?.firstOrNull()
 
     private fun boundingBox(pts: List<GeoPoint>): org.osmdroid.util.BoundingBox {
         var n = -90.0; var s = 90.0; var e = -180.0; var w = 180.0
@@ -425,8 +457,8 @@ class VisitActivity : AppCompatActivity() {
                 if (loc == null) { toast("GPS null — nyalakan lokasi & ke area terbuka"); return@launch }
                 myLoc = loc
                 addMeMarker(mv, loc)
-                // Batas area tujuan: polygon bila ada, else titik.
-                val target = parsePolygonPoints(p.polygon)?.let { boundingBox(it) }
+                // Batas area tujuan: semua polygon bila ada, else titik.
+                val target = parsePolygonRings(p.polygon)?.flatten()?.let { boundingBox(it) }
                     ?: org.osmdroid.util.BoundingBox(p.latitude, p.longitude, p.latitude, p.longitude)
                 val box = org.osmdroid.util.BoundingBox(
                     maxOf(loc.latitude, target.latNorth),

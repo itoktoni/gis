@@ -28,6 +28,9 @@ class SettingActivity : AppCompatActivity() {
         }
         findViewById<TextView>(R.id.tvAppVersion).text =
             "Versi ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+        findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
+            AppUpdateHelper.check(this, manual = true)
+        }
 
         val etReminder = findViewById<EditText>(R.id.etReminderInterval)
         val tvReminderInfo = findViewById<TextView>(R.id.tvReminderInfo)
@@ -161,10 +164,10 @@ class SettingActivity : AppCompatActivity() {
     }
 
     /** Ping ringan: GET /api/signatures/stats, 401/200 = server hidup. */
-    private suspend fun testServer(raw: String): Boolean {
+    private suspend fun testServer(raw: String): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         var u = raw.trim().trimEnd('/')
         if (!u.startsWith("http")) u = "http://$u"
-        return try {
+        return@withContext try {
             val c = java.net.URL("$u/api/absensi/reminder-config").openConnection() as java.net.HttpURLConnection
             c.connectTimeout = 4000; c.readTimeout = 4000
             c.responseCode == 401 || c.responseCode == 200

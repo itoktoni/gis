@@ -46,11 +46,14 @@ $allModules = [
     'surat-template',
     'settings',
     'native-bridge-test',
+    'apk-update',
     'notifications-web',
 ];
 
 // Modul yang BOLEH diakses per role fungsi.
+// Role "user" (Pengguna Biasa): hanya Dashboard + KMS.
 $allow = [
+    'user' => ['dashboard', 'kms-document'],
     'tanaman' => ['dashboard', 'lhp', 'lhp-report', 'kunjungan', 'checkin-report', 'blok'],
     'finance' => ['dashboard', 'voucher', 'voucher-status', 'vendor'],
     'sekretaris' => ['dashboard', 'surat', 'surat-template'],
@@ -58,6 +61,9 @@ $allow = [
 ];
 
 $restrict = [];
+
+// Pengguna Biasa: KMS hanya baca + tanya jawab, tanpa tulis/hapus.
+$restrict['user']['kms-document'] = ['create', 'save', 'update', 'delete'];
 
 foreach ($allow as $role => $modules) {
     foreach (array_diff($allModules, $modules) as $blocked) {

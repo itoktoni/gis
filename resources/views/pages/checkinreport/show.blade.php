@@ -64,7 +64,7 @@
         <div class="font-semibold text-sm {{ $isInvalid ? 'text-amber-700' : 'text-red-700' }} mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-lg">warning</span>Alasan ditandai {{ $statusLabel }} ({{ count($reasons) }})</div>
         <ul class="list-disc ml-5 space-y-1 text-sm text-on-surface">
             @foreach($reasons as $r)
-            <li>{{ $r }}</li>
+            <li>{{ formatJarakText($r) }}</li>
             @endforeach
         </ul>
     </div>
@@ -118,9 +118,9 @@
                         @if($model->selisih_radius_m === null)
                         <span class="font-normal text-on-surface-variant">Tanpa titik kunjungan</span>
                         @elseif($model->selisih_radius_m > 0)
-                        +{{ round($model->selisih_radius_m) }} m di luar radius
+                        {{ formatJarak($model->selisih_radius_m, true) }} di luar radius
                         @else
-                        {{ round($model->selisih_radius_m) }} m (di dalam radius)
+                        {{ formatJarak($model->selisih_radius_m) }} (di dalam radius)
                         @endif
                     </dd>
                     @endif

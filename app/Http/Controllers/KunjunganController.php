@@ -32,7 +32,12 @@ class KunjunganController extends Controller
             'kebunOptions' => Kebun::getOptions(),
             'kebunGeo' => Kebun::select('kebun_id as id', 'kebun_nama as nama', 'kebun_lat as lat', 'kebun_lng as lng', 'kebun_polygon as polygon')->get()
                 ->map(function ($r) {
-                    $norm = \App\Services\UtmConverter::normalizePolygon($r->polygon);
+                    // Data tersimpan yang sudah Polygon/MultiPolygon dipakai langsung
+                    // (tanpa normalisasi ulang agar area banyak tidak disunat sia-sia).
+                    $type = is_string($r->polygon) ? (json_decode($r->polygon, true)['type'] ?? '') : '';
+                    $norm = in_array($type, ['Polygon', 'MultiPolygon'], true)
+                        ? $r->polygon
+                        : \App\Services\UtmConverter::normalizePolygon($r->polygon);
                     $c = \App\Services\UtmConverter::centroidOfPolygon($norm ?? $r->polygon);
                     return [
                         'id' => $r->id,

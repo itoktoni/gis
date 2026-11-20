@@ -47,6 +47,7 @@
 
             <EditText android:id="@+id/etFrom" android:hint="Dari (yyyy-mm-dd)"
                 android:textSize="13sp" android:singleLine="true"
+                android:minWidth="0dp"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" />
 
@@ -55,6 +56,7 @@
 
             <EditText android:id="@+id/etTo" android:hint="Sampai"
                 android:textSize="13sp" android:singleLine="true"
+                android:minWidth="0dp"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" />
 

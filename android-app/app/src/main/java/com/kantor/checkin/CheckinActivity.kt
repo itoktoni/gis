@@ -56,7 +56,7 @@ class CheckinActivity : AppCompatActivity() {
     private lateinit var tvWarn: TextView
     private lateinit var btnDevSettings: Button
     private var imageCapture: ImageCapture? = null
-    private var lensFacing = CameraSelector.LENS_FACING_BACK
+    private var lensFacing = CameraSelector.LENS_FACING_FRONT
     private var lastLoc: android.location.Location? = null
     private var lastAddr: String? = null
     private var lastAddrAt: Long = 0
@@ -824,16 +824,18 @@ class CheckinActivity : AppCompatActivity() {
                 } else addrLines.add(trial)
             }
             if (addrLines.size > 2) addrLines.subList(2, addrLines.size).clear()
-            val lineH = smallPx * 1.65f
-            // Bawah diberi napas ekstra agar teks tidak mepet tepi foto.
-            val barH = (pad * 2 + datePx * 1.5f + lineH * (addrLines.size + 1) + pad).toInt()
+            // Tinggi baris hemat: 1.25x agar tidak meluber keluar foto di HP jadul.
+            val lineH = smallPx * 1.25f
+            val barH = (pad * 2 + datePx * 1.2f + lineH * (addrLines.size + 1)).toInt()
             c.drawRect(0f, (h - barH).toFloat(), w.toFloat(), h.toFloat(),
                 android.graphics.Paint().apply { color = android.graphics.Color.BLACK })
+            // Baseline rapi: tanggal lalu tiap baris + koordinat, dijamin muat dalam barH.
             var y = (h - barH + pad + datePx)
             c.drawText(dateStr, pad, y, datePaint)
-            y += datePx * 1.5f
-            for (line in addrLines) { y += smallPx * 0.45f; c.drawText(line, pad, y + smallPx * 0.55f, smallPaint); y += lineH - smallPx * 0.45f }
-            c.drawText(coord, pad, y + smallPx, smallPaint)
+            y += datePx * 0.6f
+            for (line in addrLines) { y += lineH; c.drawText(line, pad, y, smallPaint) }
+            y += lineH
+            c.drawText(coord, pad, y, smallPaint)
 
             val out = File(cacheDir, "framed_${System.currentTimeMillis()}.jpg")
             java.io.FileOutputStream(out).use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }

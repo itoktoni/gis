@@ -78,14 +78,7 @@
         </x-card>
         @endif
 
-        <div class="action-bar fixed left-0 right-0 lg:left-72 bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-3 md:px-6 py-2 md:py-3 z-[45]" style="bottom: 4rem">
-            <div class="flex items-center justify-end max-w-full mx-auto gap-2 md:gap-3">
-                @can('save', $model)
-                <button type="submit" class="inline-flex items-center justify-center h-8 md:h-10 px-6 md:px-8 text-xs md:text-sm font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 shadow-sm transition-all active:scale-95">Simpan</button>
-                @endcan
-                <a href="{{ url()->previous() }}" wire:navigate class="inline-flex items-center justify-center h-8 md:h-10 px-4 md:px-6 text-xs md:text-sm font-semibold rounded-lg border border-outline-variant">Batal</a>
-            </div>
-        </div>
+        <x-action :model="$model" :action="['save']" />
     </x-form>
 
     <script>
