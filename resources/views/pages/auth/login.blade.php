@@ -24,7 +24,7 @@
             </div>
         </x-form>
 
-        @if (Route::has('password.request'))
+        @if (Route::has('register'))
             <div class="text-center text-sm text-base-content/60">
                 <span>{{ __("Don't have an account?") }}</span>
                 <a href="{{ route('register') }}" class="text-primary hover:underline font-medium">{{ __('Sign up') }}</a>

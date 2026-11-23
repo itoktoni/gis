@@ -13,8 +13,13 @@ class CryptoService
 
     private function opensslConfigPath(): ?string
     {
-        if (getenv('OPENSSL_CONF') && is_file(getenv('OPENSSL_CONF'))) {
-            return getenv('OPENSSL_CONF');
+        // @ pada is_file(): di server produksi open_basedir membatasi akses ke
+        // /etc/ssl/certs; tanpa @, is_file() melempar ErrorException (500) saat
+        // memeriksa kandidat config yang tidak ada di host (lihat bug login APK).
+        $env = getenv('OPENSSL_CONF');
+
+        if ($env && @is_file($env)) {
+            return $env;
         }
 
         $candidates = [
@@ -24,7 +29,7 @@ class CryptoService
         ];
 
         foreach ($candidates as $path) {
-            if ($path && is_file($path)) {
+            if ($path && @is_file($path)) {
                 return $path;
             }
         }

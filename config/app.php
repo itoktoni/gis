@@ -104,6 +104,10 @@ return [
 
     'key' => env('APP_KEY'),
 
+    // Kunci induk enkripsi private key RSA (CryptoService). Harus lewat config
+    // agar tetap terbaca saat config:cache aktif (env() langsung = null setelah cache).
+    'master_key' => env('MASTER_KEY'),
+
     'previous_keys' => [
         ...array_filter(
             explode(',', (string) env('APP_PREVIOUS_KEYS', '')),
