@@ -1,0 +1,41 @@
+meta {
+  name: 02 Create User (via form admin / API)
+  type: http
+  seq: 2
+}
+
+script:pre-request {
+  // Email unik tiap run supaya tidak kena duplicate entry
+  bru.setVar("userEmail", "bruno" + Math.floor(Date.now() / 1000) + "@example.com");
+  bru.setVar("userPassword", "BrunoTest#2026");
+}
+
+post {
+  url: {{baseUrl}}/api/users/create
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+body:json {
+  {
+    "name": "Bruno Tester",
+    "email": "{{userEmail}}",
+    "password": "{{userPassword}}",
+    "role": "user"
+  }
+}
+
+script:post-response {
+  test("User berhasil dibuat", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().status).to.equal(true);
+  });
+}

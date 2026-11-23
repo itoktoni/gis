@@ -1,0 +1,26 @@
+meta {
+  name: 04 Me (token user baru)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{userToken}}
+}
+
+headers {
+  Accept: application/json
+}
+
+script:post-response {
+  test("Profil terbaca dengan token user baru (200)", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().user.email).to.equal(bru.getVar("userEmail"));
+  });
+}

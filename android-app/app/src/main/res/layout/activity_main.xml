@@ -302,10 +302,10 @@
                         android:padding="@dimen/menu_pad" android:layout_width="match_parent" android:layout_height="wrap_content">
                         <TextView android:text="⚙️" android:textSize="@dimen/menu_emoji"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Server" android:textSize="@dimen/menu_title" android:textStyle="bold"
+                        <TextView android:text="Setting" android:textSize="@dimen/menu_title" android:textStyle="bold"
                             android:textColor="@color/apn_text" android:layout_marginTop="8dp"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        <TextView android:text="Atur alamat server" android:textSize="11sp"
+                        <TextView android:text="Pengaturan aplikasi" android:textSize="11sp"
                             android:textColor="@color/apn_text_muted"
                             android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </LinearLayout>

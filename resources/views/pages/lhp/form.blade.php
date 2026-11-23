@@ -20,18 +20,15 @@
             @bind($model ?? null)
 
                 <x-select col="6" name="lhp_id_kebun" label="Nama Kebun" :options="$kebunOptions" class="search" />
-                <x-input col="6" name="lhp_tanggal" label="Tanggal" type="date" :value="old('lhp_tanggal', $model?->lhp_tanggal?->format('Y-m-d') ?? now()->toDateString())" />
+                <x-input col="4" name="lhp_tanggal" label="Tanggal" type="date" :value="old('lhp_tanggal', $model?->lhp_tanggal?->format('Y-m-d') ?? now()->toDateString())" />
 
-                <x-input col="6" name="lhp_tk_hk" label="TK Panen (HK)" type="number" step="any" />
-                <x-input col="6" name="lhp_produksi_panen_kg" label="Produksi Panen (Kg)" type="number" step="any" />
-                <x-input col="6" name="lhp_produksi_kirim_kg" label="Produksi TBS Kirim (Kg)" type="number" step="any" />
-                <div class="col-span-12 md:col-span-6"></div>
+                <x-input col="2" name="lhp_tk_hk" label="TK Panen (HK)" type="number" step="any" />
 
             @endbind
         </x-card>
 
         <x-card label="Rincian Panen per Blok" :noGrid="true">
-            <p class="text-sm text-on-surface-variant mb-3">Pilih kebun untuk memuat daftar bloknya. Total luas, janjang, brondolan & restan dihitung otomatis ke header.</p>
+            <p class="text-sm text-on-surface-variant mb-3">Pilih kebun untuk memuat daftar bloknya. Restan per blok dihitung otomatis (panen − kirim).</p>
             <div class="mb-3 flex gap-2">
                 <input type="text" id="blok-search" placeholder="Cari kode / nama blok… (cth: A1)"
                     class="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm" />
@@ -40,12 +37,14 @@
             <p class="text-xs text-on-surface-variant mb-2"><span id="blok-count">0</span> blok • <span id="blok-filled">0</span> terisi</p>
             <div id="blok-rows" class="space-y-2"></div>
             <div id="blok-empty" class="text-sm text-on-surface-variant">Pilih kebun dulu…</div>
-            <div class="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
+            <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                 <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Luas Panen</p><p class="font-bold" id="sum-luas">0</p></div>
                 <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Jjg Panen</p><p class="font-bold" id="sum-jj-panen">0</p></div>
                 <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Jjg Kirim</p><p class="font-bold" id="sum-jj-kirim">0</p></div>
                 <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Brondol (Kg)</p><p class="font-bold" id="sum-bro">0</p></div>
-                <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Restan</p><p class="font-bold" id="sum-restan">-</p></div>
+                <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Restan Jjg</p><p class="font-bold text-amber-700" id="sum-restan-jjg">0</p></div>
+                <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Restan Brd (Kg)</p><p class="font-bold text-amber-700" id="sum-restan-brd">0</p></div>
+                <div class="rounded-lg bg-surface-container px-3 py-2"><p class="text-[11px] text-on-surface-variant">Blok Restan</p><p class="font-bold" id="sum-restan">-</p></div>
             </div>
 
             {{-- Total header (readonly, dihitung dari rincian) --}}
@@ -56,6 +55,15 @@
                 <div class="col-span-6 md:col-span-3"><label class="text-xs font-semibold">Brondolan (Kg) — auto</label><input type="number" step="any" name="lhp_brondolan_kg" id="hdr-bro" readonly class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container px-3 py-2 text-sm" value="{{ old('lhp_brondolan_kg', $model?->lhp_brondolan_kg) }}"></div>
                 <div class="col-span-12"><label class="text-xs font-semibold">Blok Restan — auto</label><input type="text" name="lhp_blok_restan" id="hdr-restan" readonly class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container px-3 py-2 text-sm" value="{{ old('lhp_blok_restan', $model?->lhp_blok_restan) }}"></div>
             </div>
+        </x-card>
+
+        <x-card label="Produksi (hasil timbang)">
+            @bind($model ?? null)
+
+                <x-input col="6" name="lhp_produksi_panen_kg" label="Produksi Panen (Kg)" type="number" step="any" helper="Total timbangan panen hari ini." />
+                <x-input col="6" name="lhp_produksi_kirim_kg" label="Produksi TBS Kirim (Kg)" type="number" step="any" helper="Total TBS terkirim ke PKS." />
+
+            @endbind
         </x-card>
 
         @if(config('lhp.up_enabled') || config('lhp.hujan_enabled'))
@@ -93,20 +101,27 @@
             function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
 
             function recalc() {
-                var sLuas = 0, sJp = 0, sJk = 0, sBp = 0, sBk = 0, restan = [], filled = 0;
+                var sLuas = 0, sJp = 0, sJk = 0, sBp = 0, sBk = 0, sRj = 0, sRb = 0, restan = [], filled = 0;
                 box.querySelectorAll('[data-blok]').forEach(function (row) {
                     var id = row.getAttribute('data-blok');
                     var g = function (n) { var el = row.querySelector('[name="blok[' + id + '][' + n + ']"]'); return el ? el.value : ''; };
                     var hasAny = g('luas_panen') !== '' || g('janjang_panen') !== '' || g('janjang_kirim') !== '' || g('brondolan_panen') !== '' || g('brondolan_kirim') !== '';
                     if (hasAny) filled++;
-                    sLuas += num(g('luas_panen')); sJp += parseInt(g('janjang_panen')) || 0;
-                    sJk += parseInt(g('janjang_kirim')) || 0;
-                    sBp += num(g('brondolan_panen')); sBk += num(g('brondolan_kirim'));
-                    var r = row.querySelector('[name="blok[' + id + '][restan]"]');
-                    if (r && r.checked) restan.push(row.getAttribute('data-kode'));
+                    var jp = parseInt(g('janjang_panen')) || 0, jk = parseInt(g('janjang_kirim')) || 0;
+                    var bp = num(g('brondolan_panen')), bk = num(g('brondolan_kirim'));
+                    // Restan otomatis = panen − kirim (tidak boleh negatif).
+                    var rj = Math.max(0, jp - jk), rb = Math.max(0, Math.round((bp - bk) * 100) / 100);
+                    var rjEl = row.querySelector('[data-ro="rjjg"]'); if (rjEl) rjEl.value = rj;
+                    var rbEl = row.querySelector('[data-ro="rbrd"]'); if (rbEl) rbEl.value = rb;
+                    sLuas += num(g('luas_panen')); sJp += jp;
+                    sJk += jk;
+                    sBp += bp; sBk += bk; sRj += rj; sRb = Math.round((sRb + rb) * 100) / 100;
+                    // Blok restan = ada sisa (otomatis, checkbox dihapus).
+                    if (rj > 0 || rb > 0) restan.push(row.getAttribute('data-kode'));
                 });
                 setText('sum-luas', sLuas); setText('sum-jj-panen', sJp); setText('sum-jj-kirim', sJk);
                 setText('sum-bro', sBp + sBk); setText('sum-restan', restan.join(', ') || '-');
+                setText('sum-restan-jjg', sRj); setText('sum-restan-brd', sRb);
                 var cc = document.getElementById('blok-count'); if (cc) cc.textContent = box.querySelectorAll('[data-blok]').length;
                 var cf = document.getElementById('blok-filled'); if (cf) cf.textContent = filled;
                 setVal('hdr-luas', sLuas || ''); setVal('hdr-jj-panen', sJp || '');
@@ -131,13 +146,13 @@
                     row.setAttribute('data-nama', (b.nama || '').toLowerCase());
                     row.innerHTML =
                         '<div class="col-span-12"><p class="font-bold text-primary">' + b.kode + ' <span class="font-normal text-on-surface-variant text-xs">— ' + b.nama + '</span></p></div>' +
-                        fld(b.id, 'luas_panen', 'Luas (Ha)', ex.luas_panen) +
-                        fld(b.id, 'janjang_panen', 'Jjg Panen', ex.janjang_panen) +
-                        fld(b.id, 'janjang_kirim', 'Jjg Kirim', ex.janjang_kirim) +
-                        fld(b.id, 'brondolan_panen', 'Brd Panen (Kg)', ex.brondolan_panen) +
-                        fld(b.id, 'brondolan_kirim', 'Brd Kirim (Kg)', ex.brondolan_kirim) +
-                        '<div class="col-span-6 sm:col-span-2"><label class="text-xs">Restan</label><br>' +
-                        '<input type="checkbox" name="blok[' + b.id + '][restan]" value="1" class="mt-1 h-6 w-6 accent-red-600"' + (ex.restan ? ' checked' : '') + '></div>';
+                        fld(b.id, 'luas_panen', 'Luas Panen (Ha)', ex.luas_panen, 'col-span-12') +
+                        fld(b.id, 'janjang_panen', 'Jjg Panen', ex.janjang_panen, 'col-span-6') +
+                        fld(b.id, 'janjang_kirim', 'Jjg Kirim', ex.janjang_kirim, 'col-span-6') +
+                        fld(b.id, 'brondolan_panen', 'Brd Panen (Kg)', ex.brondolan_panen, 'col-span-6') +
+                        fld(b.id, 'brondolan_kirim', 'Brd Kirim (Kg)', ex.brondolan_kirim, 'col-span-6') +
+                        fldRo('rjjg', 'Restan Jjg (auto)') +
+                        fldRo('rbrd', 'Restan Brd Kg (auto)');
                     box.appendChild(row);
                 });
                 box.querySelectorAll('input').forEach(function (el) {
@@ -147,9 +162,14 @@
                 recalc();
                 applySearch();
             }
-            function fld(id, name, label, val) {
-                return '<div class="col-span-6 sm:col-span-2"><label class="text-xs">' + label + '</label>' +
+            function fld(id, name, label, val, cls) {
+                return '<div class="' + (cls || 'col-span-6 sm:col-span-2') + '"><label class="text-xs">' + label + '</label>' +
                     '<input type="number" step="any" min="0" name="blok[' + id + '][' + name + ']" value="' + (val ?? '') + '" class="mt-1 w-full rounded-lg border border-outline-variant px-2 py-1.5 text-sm"></div>';
+            }
+            // Kolom hitung otomatis: tanpa name (tidak disubmit), diisi recalc().
+            function fldRo(ro, label) {
+                return '<div class="col-span-6"><label class="text-xs text-on-surface-variant">' + label + '</label>' +
+                    '<input type="number" readonly tabindex="-1" data-ro="' + ro + '" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container px-2 py-1.5 text-sm font-semibold"></div>';
             }
 
             kebunSel.addEventListener('change', function () { existing = {}; render(); });

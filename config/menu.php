@@ -27,7 +27,8 @@ return [
                 ['route' => 'dashboard-kebun', 'icon' => 'dashboard', 'label' => 'Dashboard Kebun'],
                 ['route' => 'display', 'icon' => 'tv', 'label' => 'Display TV'],
                 ['route' => 'lhp.getTable', 'icon' => 'agriculture', 'label' => 'LHP Harian', 'match' => ['lhp.getTable', 'lhp.getCreate', 'lhp.getUpdate', 'lhp.getDelete', 'lhp.getShow']],
-                ['route' => 'lhp-report.getTable', 'icon' => 'summarize', 'label' => 'Report LHP', 'match' => ['lhp-report.*']],
+                ['route' => 'lhp-report.getTable', 'icon' => 'summarize', 'label' => 'Report LHP', 'match' => ['lhp-report.getTable', 'lhp-report.getPrint', 'lhp-report.getExportExcel']],
+                ['route' => 'lhp-report.getTableBlok', 'icon' => 'grid_on', 'label' => 'Report per Blok', 'match' => ['lhp-report.getTableBlok', 'lhp-report.getBlok', 'lhp-report.getExportBlok']],
             ],
         ],
         [

@@ -52,6 +52,35 @@ class LhpReportController extends Controller
         ]));
     }
 
+    /** Filter khusus report per blok (menu terpisah). */
+    public function getTableBlok(GeneralRequest $request)
+    {
+        return $this->views($this->template('table-blok'), $this->share());
+    }
+
+    /** Print per blok: 1 baris per blok per tanggal. */
+    public function getBlok(Request $request)
+    {
+        set_time_limit(0);
+
+        $query = $this->baseBlokQuery($request);
+
+        $threshold = (int) env('REPORT_CHUNK', 10000);
+        if ($threshold > 0 && (clone $query)->count() > $threshold) {
+            return $this->getExportBlok($request);
+        }
+
+        $data = (clone $query)->get()->sortBy([
+            fn ($r) => $r->hasLhp?->lhp_tanggal,
+            fn ($r) => $r->hasLhp?->lhp_id_kebun,
+            fn ($r) => $r->hasBlok?->blok_kode,
+        ])->values();
+
+        return $this->views($this->template('blok'), array_merge($this->share(), [
+            'data' => $data,
+        ]));
+    }
+
     /**
      * Export Excel via HTML table (dibuka langsung di Excel) —
      * kolom persis tab PT di file referensi (No s/d Total, 27 kolom),
@@ -68,8 +97,8 @@ class LhpReportController extends Controller
         return response()->streamDownload(function () use ($request, $opening) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
             echo '<head><meta charset="UTF-8"></head><body>';
-            echo '<table><tr><td colspan="27"><b>LAPORAN HARIAN PRODUKSI (LHP)</b></td></tr>';
-            echo '<tr><td colspan="27"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
+            echo '<table><tr><td colspan="29"><b>LAPORAN HARIAN PRODUKSI (LHP)</b></td></tr>';
+            echo '<tr><td colspan="29"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
             echo '<table border="1"><thead><tr>'
                 .'<th>No</th><th>Tanggal</th><th>Hari</th><th>Nama Kebun</th>'
                 .'<th>Luas TM<br>Planted (Ha)</th><th>Luas<br>Panen (Ha)</th><th>TK Panen<br>(HK)</th>'
@@ -78,7 +107,7 @@ class LhpReportController extends Controller
                 .'<th>Target<br>Produksi (Kg)</th><th>Produksi TBS<br>RKAP (Kg)</th>'
                 .'<th>Janjang<br>Kirim (Jjg)</th><th>Produksi TBS<br>Kirim (Kg)</th>'
                 .'<th>BJR</th><th>Brondolan<br>(Kg)</th><th>% Kutip<br>Brondolan</th>'
-                .'<th>Restan<br>(Kg)</th>'
+                .'<th>Restan<br>(Kg)</th><th>Restan<br>Jjg</th><th>Restan Brd<br>(Kg)</th>'
                 .'<th>UP Ha<br>&lt;= 10 Hari</th><th>UP Ha<br>11 s.d 15 Hari</th><th>UP Ha<br>&gt; 15 Hari</th>'
                 .'<th>Pagi<br>Jam 6 - 11</th><th>Siang<br>Jam 11 - 16</th><th>Malam<br>Jam 16 - 6</th><th>Total</th>'
                 .'</tr></thead><tbody>';
@@ -124,6 +153,8 @@ class LhpReportController extends Controller
                             .'<td>'.e($table->lhp_brondolan_kg ?? 0).'</td>'
                             .'<td>'.($prodKirim > 0 ? round($brondolan / $prodKirim * 100, 2) : 0).'</td>'
                             .'<td>'.round($restan[$kid], 2).'</td>'
+                            .'<td>'.e($table->lhp_restan_janjang ?? 0).'</td>'
+                            .'<td>'.e($table->lhp_restan_brondolan_kg ?? 0).'</td>'
                             .'<td>'.e($table->lhp_up_le10 ?? 0).'</td>'
                             .'<td>'.e($table->lhp_up_11_15 ?? 0).'</td>'
                             .'<td>'.e($table->lhp_up_gt15 ?? 0).'</td>'
@@ -134,6 +165,54 @@ class LhpReportController extends Controller
                     }
                     flush();
                 });
+
+            echo '</tbody></table></body></html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /** Export Excel per blok via HTML table streaming. */
+    public function getExportBlok(Request $request)
+    {
+        set_time_limit(0);
+
+        $filename = 'report-lhp-blok-'.now()->format('Ymd-His').'.xls';
+
+        return response()->streamDownload(function () use ($request) {
+            echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
+            echo '<head><meta charset="UTF-8"></head><body>';
+            echo '<table><tr><td colspan="13"><b>LAPORAN HARIAN PRODUKSI (LHP) PER BLOK</b></td></tr>';
+            echo '<tr><td colspan="13"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
+            echo '<table border="1"><thead><tr>'
+                .'<th>No.</th><th>Tanggal</th><th>Nama Kebun</th><th>Kode Blok</th><th>Nama Blok</th>'
+                .'<th>Luas Panen (Ha)</th>'
+                .'<th>Jjg Panen</th><th>Jjg Kirim</th><th>Restan Jjg</th>'
+                .'<th>Brd Panen (Kg)</th><th>Brd Kirim (Kg)</th><th>Restan Brd (Kg)</th>'
+                .'<th>Restan</th>'
+                .'</tr></thead><tbody>';
+
+            $no = 0;
+            $this->baseBlokQuery($request)->chunk(1000, function ($rows) use (&$no) {
+                foreach ($rows as $table) {
+                    $no++;
+                    echo '<tr><td>'.$no.'</td>'
+                        .'<td>'.e($table->hasLhp?->lhp_tanggal?->format('Y-m-d')).'</td>'
+                        .'<td>'.e($table->hasLhp?->hasKebun?->kebun_nama ?? '-').'</td>'
+                        .'<td>'.e($table->hasBlok?->blok_kode ?? '-').'</td>'
+                        .'<td>'.e($table->hasBlok?->blok_nama ?? '-').'</td>'
+                        .'<td>'.e($table->lhp_blok_luas_panen ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_janjang_panen ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_janjang_kirim ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_restan_janjang ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_brondolan_panen ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_brondolan_kirim ?? 0).'</td>'
+                        .'<td>'.e($table->lhp_blok_restan_brondolan ?? 0).'</td>'
+                        .'<td>'.($table->lhp_blok_restan ? 'Ya' : '-').'</td></tr>';
+                }
+                flush();
+            });
 
             echo '</tbody></table></body></html>';
         }, $filename, [
@@ -190,6 +269,26 @@ class LhpReportController extends Controller
         if ($request->filled('kebun_id')) {
             $query->where('lhp_id_kebun', $request->input('kebun_id'));
         }
+
+        return $query;
+    }
+
+    /** Query rincian per blok dengan filter tanggal + kebun + hak akses yang sama. */
+    private function baseBlokQuery(Request $request)
+    {
+        $query = \App\Models\LhpBlok::with(['hasLhp.hasKebun.hasPt', 'hasBlok'])
+            ->whereHas('hasLhp', function ($q) use ($request) {
+                if ($request->filled('dari')) {
+                    $q->whereDate('lhp_tanggal', '>=', $request->input('dari'));
+                }
+                if ($request->filled('sampai')) {
+                    $q->whereDate('lhp_tanggal', '<=', $request->input('sampai'));
+                }
+                if ($request->filled('kebun_id')) {
+                    $q->where('lhp_id_kebun', $request->input('kebun_id'));
+                }
+                scopeKebun($q, 'lhp_id_kebun');
+            });
 
         return $query;
     }

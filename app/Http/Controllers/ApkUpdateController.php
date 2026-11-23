@@ -60,7 +60,10 @@ class ApkUpdateController extends Controller
         ]);
 
         if ($request->hasFile('apk')) {
-            $request->file('apk')->storeAs('public/apk', 'apn-monitoring.apk');
+            // Simpan LANGSUNG ke public/apk (folder yang di-download HP),
+            // bukan ke storage (itu tidak ter-publish ke URL /apk/...).
+            @mkdir(public_path('apk'), 0755, true);
+            $request->file('apk')->move(public_path('apk'), 'apn-monitoring.apk');
         }
 
         Storage::put(self::JSON_PATH, json_encode([

@@ -16,6 +16,8 @@ class LhpBlok extends BaseModel
         'lhp_blok_janjang_kirim',
         'lhp_blok_brondolan_panen',
         'lhp_blok_brondolan_kirim',
+        'lhp_blok_restan_janjang',
+        'lhp_blok_restan_brondolan',
         'lhp_blok_restan',
     ];
 
@@ -27,6 +29,8 @@ class LhpBlok extends BaseModel
             'lhp_blok_janjang_kirim' => 'integer',
             'lhp_blok_brondolan_panen' => 'float',
             'lhp_blok_brondolan_kirim' => 'float',
+            'lhp_blok_restan_janjang' => 'integer',
+            'lhp_blok_restan_brondolan' => 'float',
             'lhp_blok_restan' => 'boolean',
         ];
     }

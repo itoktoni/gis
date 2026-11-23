@@ -24,6 +24,8 @@ class LhpBlokService
         $sumJk = 0;
         $sumBp = 0;
         $sumBk = 0;
+        $sumRj = 0;
+        $sumRb = 0;
         $restanCodes = [];
 
         foreach ($rows as $blokId => $r) {
@@ -39,6 +41,16 @@ class LhpBlokService
                 continue;
             }
 
+            // Restan = panen − kirim (tidak boleh negatif).
+            $jp = (int) ($r['janjang_panen'] ?? 0);
+            $jk = (int) ($r['janjang_kirim'] ?? 0);
+            $bp = (float) ($r['brondolan_panen'] ?? 0);
+            $bk = (float) ($r['brondolan_kirim'] ?? 0);
+            $restanJjg = max(0, $jp - $jk);
+            $restanBrd = max(0, $bp - $bk);
+            // Checkbox restan di form dihapus: status restan otomatis dari ada/tidaknya sisa.
+            $isRestan = ! empty($r['restan']) || $restanJjg > 0 || $restanBrd > 0;
+
             $keep[] = (int) $blokId;
             LhpBlok::updateOrCreate(
                 ['lhp_blok_id_lhp' => $lhp->lhp_id, 'lhp_blok_id_blok' => (int) $blokId],
@@ -48,15 +60,19 @@ class LhpBlokService
                     'lhp_blok_janjang_kirim' => $this->int($r['janjang_kirim'] ?? null),
                     'lhp_blok_brondolan_panen' => $this->num($r['brondolan_panen'] ?? null),
                     'lhp_blok_brondolan_kirim' => $this->num($r['brondolan_kirim'] ?? null),
+                    'lhp_blok_restan_janjang' => $restanJjg,
+                    'lhp_blok_restan_brondolan' => $restanBrd,
                     'lhp_blok_restan' => $isRestan,
                 ]
             );
 
             $sumLuas += (float) ($r['luas_panen'] ?? 0);
-            $sumJp += (int) ($r['janjang_panen'] ?? 0);
-            $sumJk += (int) ($r['janjang_kirim'] ?? 0);
-            $sumBp += (float) ($r['brondolan_panen'] ?? 0);
-            $sumBk += (float) ($r['brondolan_kirim'] ?? 0);
+            $sumJp += $jp;
+            $sumJk += $jk;
+            $sumBp += $bp;
+            $sumBk += $bk;
+            $sumRj += $restanJjg;
+            $sumRb += $restanBrd;
             if ($isRestan) {
                 $restanCodes[] = Blok::where('blok_id', (int) $blokId)->value('blok_kode');
             }
@@ -73,6 +89,8 @@ class LhpBlokService
             'lhp_janjang_panen' => $sumJp ?: null,
             'lhp_janjang_kirim' => $sumJk ?: null,
             'lhp_brondolan_kg' => ($sumBp + $sumBk) ?: null,
+            'lhp_restan_janjang' => $sumRj ?: null,
+            'lhp_restan_brondolan_kg' => $sumRb ?: null,
             'lhp_blok_restan' => $restanCodes !== [] ? implode(', ', array_filter($restanCodes)) : null,
         ]);
     }

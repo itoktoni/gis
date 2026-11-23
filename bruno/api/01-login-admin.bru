@@ -1,0 +1,34 @@
+meta {
+  name: 01 Login Admin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/login
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+body:json {
+  {
+    "email": "admin@test.com",
+    "password": "password"
+  }
+}
+
+script:post-response {
+  bru.setVar("adminToken", res.getBody().access_token);
+
+  test("Login admin sukses (200)", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("Response berisi access_token", function() {
+    expect(res.getBody().access_token).to.be.a("string");
+  });
+}

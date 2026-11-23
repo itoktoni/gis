@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 Route::middleware('auth')->post('/centrifugo/token', function (Request $request) {
-    if (! config('langkahkecil.notification_enable')) {
+    if (! config('centrifugo.enabled')) {
         return response()->json(['token' => 'disabled']);
     }
 
@@ -32,7 +32,7 @@ Route::middleware('auth')->post('/centrifugo/token', function (Request $request)
 
 Route::get('/validate/{id}', [ValidateController::class, 'show'])->name('validate.byId');
 
-Route::middleware(['auth', 'verified', 'access'])->group(function () {
+Route::middleware(['auth', 'access'])->group(function () {
 
     Route::get('/validate', [ValidateController::class, 'form'])->name('validate.form');
     Route::post('/validate', [ValidateController::class, 'verify'])->name('validate.check');
@@ -69,7 +69,7 @@ Route::middleware(['auth', 'verified', 'access'])->group(function () {
 
     Route::auto('/lhp', 'LhpController', ['name' => 'lhp']);
 
-    Route::auto('/lhp-report', 'LhpReportController', ['name' => 'lhp-report', 'only' => ['getTable', 'getPrint', 'getExportExcel']]);
+    Route::auto('/lhp-report', 'LhpReportController', ['name' => 'lhp-report', 'only' => ['getTable', 'getTableBlok', 'getPrint', 'getExportExcel', 'getBlok', 'getExportBlok']]);
 
     Route::auto('/objek', 'ObjekController', ['name' => 'objek']);
 

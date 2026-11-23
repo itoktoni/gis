@@ -33,7 +33,7 @@
                 <th>Target<br>Produksi (Kg)</th><th>Produksi TBS<br>RKAP (Kg)</th>
                 <th>Janjang<br>Kirim (Jjg)</th><th>Produksi TBS<br>Kirim (Kg)</th>
                 <th>BJR</th><th>Brondolan<br>(Kg)</th><th>% Kutip<br>Brondolan</th>
-                <th>Restan<br>(Kg)</th>
+                <th>Restan<br>(Kg)</th><th>Restan<br>Jjg</th><th>Restan Brd<br>(Kg)</th>
                 <th>UP Ha<br>&lt;= 10 Hari</th><th>UP Ha<br>11 s.d 15 Hari</th><th>UP Ha<br>&gt; 15 Hari</th>
                 <th>Pagi<br>Jam 6 - 11</th><th>Siang<br>Jam 11 - 16</th><th>Malam<br>Jam 16 - 6</th><th>Total</th>
             </tr>
@@ -77,6 +77,8 @@
                 <td class="num">{{ $r->lhp_brondolan_kg }}</td>
                 <td class="num">{{ $prodKirim > 0 ? round($brondolan / $prodKirim * 100, 2) : 0 }}</td>
                 <td class="num">{{ round($restan[$kid], 2) }}</td>
+                <td class="num">{{ $r->lhp_restan_janjang ?? 0 }}</td>
+                <td class="num">{{ $r->lhp_restan_brondolan_kg ?? 0 }}</td>
                 <td class="num">{{ $r->lhp_up_le10 }}</td>
                 <td class="num">{{ $r->lhp_up_11_15 }}</td>
                 <td class="num">{{ $r->lhp_up_gt15 }}</td>
@@ -86,7 +88,7 @@
                 <td class="num">{{ round($hujanPagi + $hujanSiang + $hujanMalam, 2) }}</td>
             </tr>
             @empty
-            <tr><td colspan="27" style="text-align:center">Tidak ada data.</td></tr>
+            <tr><td colspan="29" style="text-align:center">Tidak ada data.</td></tr>
             @endforelse
         </tbody>
     </table>

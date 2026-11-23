@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\AccessMiddleware;
-use App\Http\Middleware\VerifyVerified;
 use App\Providers\ModelAliasServiceProvider;
 use Ibex\CrudGenerator\CrudServiceProvider;
 use Illuminate\Foundation\Application;
@@ -27,8 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'access' => AccessMiddleware::class,
-            'verified' => VerifyVerified::class,
-            // 'skip_verified' => SkipVerifiedCheck::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
