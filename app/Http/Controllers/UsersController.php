@@ -8,7 +8,6 @@ use App\Concerns\ControllerTrait;
 use App\Enums\RoleEnum;
 use App\Http\Requests\GeneralRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class UsersController extends Controller
@@ -31,17 +30,44 @@ class UsersController extends Controller
         $this->model = $model::getModel();
     }
 
-    public static function boot()
+    public function postCreate(GeneralRequest $request)
     {
-        parent::saving(function ($model) {
-            if (! empty(request()->get('password'))) {
-                $model->password = Hash::make(request()->get('password'));
-            }
-        });
-        parent::boot();
+        $kebunIds = $this->validatedKebunIds($request);
+
+        $avatar = $this->handleAvatar($request, null);
+        if ($avatar !== null) {
+            $request->merge(['avatar' => $avatar]);
+        }
+
+        $response = CreateAction::run($request, $this->model);
+
+        if (! empty($response['status']) && ! empty($response['data'])) {
+            $response['data']->hasKebunList()->sync($kebunIds);
+        }
+
+        return $this->response($response);
     }
 
-    // ---- avatar helpers (same pattern as WebsiteSettingController) ----
+    public function postUpdate(GeneralRequest $request, $id)
+    {
+        $kebunIds = $this->validatedKebunIds($request);
+
+        $user = $this->model->findOrFail($id);
+        $existing = $user->avatar ?? null;
+
+        $avatar = $this->handleAvatar($request, $existing);
+        if ($avatar !== $existing) {
+            $request->merge(['avatar' => $avatar]);
+        }
+
+        $response = UpdateAction::run($request, $id, $this->model);
+
+        if (! empty($response['status'])) {
+            $this->model->findOrFail($id)->hasKebunList()->sync($kebunIds);
+        }
+
+        return $this->response($response);
+    }
 
     private function handleAvatar(GeneralRequest $request, ?string $existing): ?string
     {
@@ -75,36 +101,6 @@ class UsersController extends Controller
         if (file_exists($file)) {
             unlink($file);
         }
-    }
-
-    public function postCreate(GeneralRequest $request)
-    {
-        $kebunIds = $this->validatedKebunIds($request);
-        $response = CreateAction::run($request, $this->model);
-        $avatar = $this->handleAvatar($request, null);
-        if ($avatar !== null) {
-            $request->merge(['avatar' => $avatar]);
-        }
-        User::where('email', $request->input('email'))->first()?->hasKebunList()->sync($kebunIds);
-
-        return $this->response($response);
-    }
-
-    public function postUpdate(GeneralRequest $request, $id)
-    {
-        $kebunIds = $this->validatedKebunIds($request);
-        $response = UpdateAction::run($request, $id, $this->model);
-
-        $user = $this->model->findOrFail($id);
-        $existing = $user->avatar ?? null;
-
-        $avatar = $this->handleAvatar($request, $existing);
-        if ($avatar !== $existing) {
-            $request->merge(['avatar' => $avatar]);
-        }
-        $user->hasKebunList()->sync($kebunIds);
-
-        return $this->response($response);
     }
 
     /**

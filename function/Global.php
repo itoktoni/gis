@@ -529,15 +529,15 @@ function uploadFile($file, string $folder = 'uploads', array $options = []): str
         mkdir($targetDir, 0755, true);
     }
 
-    // Move file to storage
-    $path = $file->storeAs('public/'.$folder, $filename);
+    // Move file to storage (disk public → storage/app/public/{folder}).
+    $path = $file->storeAs($folder, $filename, 'public');
 
     if (! $path) {
         throw new InvalidArgumentException('Gagal menyimpan file.');
     }
 
     // Ensure file permissions are safe
-    chmod(storage_path('app/'.$path), 0644);
+    chmod(storage_path('app/public/'.$path), 0644);
 
     // Return relative public path
     return $folder.'/'.$filename;
@@ -624,13 +624,13 @@ function uploadDocument($file, string $folder = 'kms', array $options = []): str
         mkdir($targetDir, 0755, true);
     }
 
-    $path = $file->storeAs('public/'.$folder, $filename);
+    $path = $file->storeAs($folder, $filename, 'public');
 
     if (! $path) {
         throw new InvalidArgumentException('Gagal menyimpan file.');
     }
 
-    chmod(storage_path('app/'.$path), 0644);
+    chmod(storage_path('app/public/'.$path), 0644);
 
     return $folder.'/'.$filename;
 }

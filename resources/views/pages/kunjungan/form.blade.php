@@ -27,24 +27,26 @@
                     @error('kunjungan_polygon')<p class="text-xs text-error mt-1">{{ $message }}</p>@enderror
                 </div>
 
-                @if(isset($model) && $model->exists && ($model->kunjungan_status === 'done' || $model->kunjungan_id_checkin))
-                <div class="col-span-12">
-                    @can('reset', $model)
-                    <form method="POST" action="{{ moduleRoute('postReset', ['id' => $model->field_primary]) }}" onsubmit="return confirm('Set NULL? Status kembali pending dan tautan check-in dilepas.')">
-                        @csrf
-                        <button class="inline-flex items-center gap-2 rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white">
-                            <span class="material-symbols-outlined text-lg">restart_alt</span> Set NULL (Reset ke Pending)
-                        </button>
-                    </form>
-                    @endcan
-                </div>
-                @endif
-
             @endbind
         </x-card>
 
         <x-action :model="$model" :action="['save']"/>
     </x-form>
+
+    {{-- Reset ditaruh di luar x-form: form tidak boleh nested (browser akan
+        menutup form utama lebih awal sehingga tombol Save mati). --}}
+    @if(isset($model) && $model->exists && ($model->kunjungan_status === 'done' || $model->kunjungan_id_checkin))
+        @can('reset', $model)
+        <x-card label="Reset Titik" :noGrid="true">
+            <form method="POST" action="{{ moduleRoute('postReset', ['id' => $model->field_primary]) }}" onsubmit="return confirm('Set NULL? Status kembali pending dan tautan check-in dilepas.')">
+                @csrf
+                <button class="inline-flex items-center gap-2 rounded-lg bg-error px-4 py-2 text-sm font-semibold text-white">
+                    <span class="material-symbols-outlined text-lg">restart_alt</span> Set NULL (Reset ke Pending)
+                </button>
+            </form>
+        </x-card>
+        @endcan
+    @endif
 
     <script>
         (function () {
