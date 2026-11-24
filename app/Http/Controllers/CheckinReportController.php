@@ -34,6 +34,10 @@ class CheckinReportController extends Controller
                 'invalid' => 'Di Luar Jangkauan',
                 'fake' => 'Palsu',
             ],
+            'jenisOptions' => [
+                'checkin' => 'Checkin',
+                'kunjungan' => 'Kunjungan',
+            ],
         ];
 
         return array_merge($default, $data);
@@ -41,7 +45,7 @@ class CheckinReportController extends Controller
 
     protected function baseQuery()
     {
-        $query = $this->model->with(['hasUser']);
+        $query = $this->model->with(['hasUser', 'hasKunjungan']);
 
         if (request()->filled('user_id')) {
             $query->where('user_id', request()->input('user_id'));
@@ -49,6 +53,7 @@ class CheckinReportController extends Controller
         if (request()->filled('status')) {
             $query->where('status', request()->input('status'));
         }
+        $this->applyJenisFilter($query);
         if (request()->filled('from')) {
             $query->whereDate('created_at', '>=', request()->input('from'));
         }
@@ -113,7 +118,7 @@ class CheckinReportController extends Controller
 
     public function getShow(GeneralRequest $request, $id)
     {
-        $checkin = $this->model->with(['hasUser'])->findOrFail($id);
+        $checkin = $this->model->with(['hasUser', 'hasKunjungan'])->findOrFail($id);
         $kunjungan = Kunjungan::where('kunjungan_id_checkin', $checkin->id)->first();
 
         return $this->views($this->template(), array_merge($this->share(), [
@@ -160,7 +165,7 @@ class CheckinReportController extends Controller
             echo '<head><meta charset="UTF-8"></head><body>';
             echo '<h3>SUMMARY ABSEN</h3>';
             echo '<table border="1"><thead><tr>'
-                .'<th>No.</th><th>Karyawan</th><th>Total Check-In</th><th>Valid</th>'
+                .'<th>No.</th><th>Karyawan</th><th>Total Check-In</th><th>Checkin</th><th>Kunjungan</th><th>Valid</th>'
                 .'<th>Di Luar Jangkauan</th><th>Palsu</th><th>Hari Hadir</th><th>% Valid</th>'
                 .'</tr></thead><tbody>';
             $no = 0;
@@ -169,6 +174,8 @@ class CheckinReportController extends Controller
                 echo '<tr><td>'.$no.'</td>'
                     .'<td>'.e($row['nama']).'</td>'
                     .'<td>'.$row['total'].'</td>'
+                    .'<td>'.$row['checkin'].'</td>'
+                    .'<td>'.$row['kunjungan'].'</td>'
                     .'<td>'.$row['valid'].'</td>'
                     .'<td>'.$row['invalid'].'</td>'
                     .'<td>'.$row['fake'].'</td>'
@@ -177,7 +184,7 @@ class CheckinReportController extends Controller
             }
             echo '</tbody></table><br><h3>DETAIL ABSEN</h3>';
             echo '<table border="1"><thead><tr>'
-                .'<th>No.</th><th>Tanggal</th><th>Karyawan</th><th>Status</th>'
+                .'<th>No.</th><th>Tanggal</th><th>Karyawan</th><th>Jenis</th><th>Titik Kunjungan</th><th>Status</th>'
                 .'<th>Selisih Radius (m)</th><th>Alamat</th>'
                 .'</tr></thead><tbody>';
             $no = 0;
@@ -187,6 +194,8 @@ class CheckinReportController extends Controller
                     echo '<tr><td>'.$no.'</td>'
                         .'<td>'.e($table->created_at?->format('Y-m-d H:i')).'</td>'
                         .'<td>'.e($table->hasUser?->name ?? '-').'</td>'
+                        .'<td>'.($table->kunjungan_id ? 'Kunjungan' : 'Checkin').'</td>'
+                        .'<td>'.e($table->hasKunjungan?->kunjungan_nama ?? '-').'</td>'
                         .'<td>'.e($table->status).'</td>'
                         .'<td>'.e($table->selisih_radius_m ?? '-').'</td>'
                         .'<td>'.e($table->address ?? '-').'</td></tr>';
@@ -200,9 +209,21 @@ class CheckinReportController extends Controller
         ]);
     }
 
+    /** Filter jenis: checkin (tanpa titik) vs kunjungan (memakai titik). */
+    private function applyJenisFilter($query, $request = null): void
+    {
+        $jenis = ($request ?? request())->input('jenis');
+        if ($jenis === 'checkin') {
+            $query->whereNull('kunjungan_id');
+        } elseif ($jenis === 'kunjungan') {
+            $query->whereNotNull('kunjungan_id');
+        }
+    }
+
     private function filteredQuery(GeneralRequest|Request $request)
     {
-        $query = $this->model->with(['hasUser']);
+        $query = $this->model->with(['hasUser', 'hasKunjungan']);
+        $this->applyJenisFilter($query, $request);
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
@@ -239,6 +260,8 @@ class CheckinReportController extends Controller
             $valid = (clone $q)->where('status', 'valid')->count();
             $invalid = (clone $q)->where('status', 'invalid')->count();
             $fake = (clone $q)->where('status', 'fake')->count();
+            $nCheckin = (clone $q)->whereNull('kunjungan_id')->count();
+            $nKunjungan = (clone $q)->whereNotNull('kunjungan_id')->count();
             $hariHadir = (clone $q)->where('status', 'valid')
                 ->distinct()->count(\Illuminate\Support\Facades\DB::raw('DATE(created_at)'));
             $out[] = [
@@ -246,6 +269,8 @@ class CheckinReportController extends Controller
                 'nama' => $user->name,
                 'email' => $user->email,
                 'total' => $total,
+                'checkin' => $nCheckin,
+                'kunjungan' => $nKunjungan,
                 'valid' => $valid,
                 'invalid' => $invalid,
                 'fake' => $fake,

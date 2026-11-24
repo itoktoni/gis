@@ -17,7 +17,7 @@ class Checkin extends BaseModel
     protected $keyType = 'string';
 
     protected $fillable = [
-        'signature_id', 'user_id', 'latitude', 'longitude',
+        'signature_id', 'user_id', 'kunjungan_id', 'latitude', 'longitude',
         'accuracy', 'selisih_radius_m', 'address', 'client_timestamp', 'photo_path',
         'status', 'failure_reason', 'payload_json', 'ip_address',
         'original_latitude', 'original_longitude', 'original_source', 'original_accuracy',
@@ -50,6 +50,11 @@ class Checkin extends BaseModel
     public function hasUser()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function hasKunjungan()
+    {
+        return $this->belongsTo(Kunjungan::class, 'kunjungan_id', 'kunjungan_id');
     }
 
     public function hasSignature()

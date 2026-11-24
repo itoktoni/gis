@@ -7,6 +7,7 @@
         <form method="GET" action="{{ moduleRoute('getTable') }}">
             <x-card label="Filter Report Check-In">
                 <x-select col="3" name="user_id" label="User" :options="$userOptions" :default="request('user_id')" placeholder="-- Semua User --" />
+                <x-select col="3" name="jenis" label="Jenis" :options="$jenisOptions" :default="request('jenis')" placeholder="-- Semua Jenis --" />
                 <x-select col="3" name="status" label="Status" :options="$statusOptions" :default="request('status')" placeholder="-- Semua Status --" />
                 <x-input col="3" type="date" name="from" label="Dari Tanggal" :value="request('from')" />
                 <x-input col="3" type="date" name="to" label="Sampai Tanggal" :value="request('to')" />
@@ -22,13 +23,13 @@
                 <a href="{{ moduleRoute('getTable', ['all' => 1]) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">restart_alt</span> Semua
                 </a>
-                <a href="{{ moduleRoute('getSummary', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id')])) }}" wire:navigate class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                <a href="{{ moduleRoute('getSummary', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'jenis' => request('jenis')])) }}" wire:navigate class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">summarize</span> Summary
                 </a>
-                <a href="{{ moduleRoute('getPrint', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status')])) }}" target="_blank" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                <a href="{{ moduleRoute('getPrint', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status'), 'jenis' => request('jenis')])) }}" target="_blank" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">print</span> Print
                 </a>
-                <a href="{{ moduleRoute('getExportExcel', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status')])) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                <a href="{{ moduleRoute('getExportExcel', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status'), 'jenis' => request('jenis')])) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">download</span> Excel
                 </a>
             </div>
@@ -78,6 +79,7 @@
                 <th>Foto</th>
                 <x-table-sort field="created_at" label="Tanggal" :sortField="$sortField" :sortDir="$sortDir" />
                 <th>User</th>
+                <th>Jenis</th>
                 <x-table-sort field="status" label="Status" :sortField="$sortField" :sortDir="$sortDir" />
                 <x-table-sort field="selisih_radius_m" label="Selisih Radius" :sortField="$sortField" :sortDir="$sortDir" />
                 <x-table-sort field="address" label="Alamat" :sortField="$sortField" :sortDir="$sortDir" />
@@ -109,6 +111,9 @@
                     <td class="whitespace-nowrap">{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
                     <td>{{ $table->hasUser?->name ?? '-' }}</td>
                     <td>
+                        @if($table->kunjungan_id)<x-badge type="info">Kunjungan</x-badge>@if($table->hasKunjungan?->kunjungan_nama)<span class="block text-[10px] text-on-surface-variant">{{ $table->hasKunjungan->kunjungan_nama }}</span>@endif@else<x-badge type="soft">Checkin</x-badge>@endif
+                    </td>
+                    <td>
                         <x-badge :type="$table->status === 'valid' ? 'success' : ($table->status === 'invalid' ? 'warning' : 'error')">{{ $fmtStatus($table->status) }}</x-badge>
                     </td>
                     <td class="whitespace-nowrap {{ $table->selisih_radius_m !== null && $table->selisih_radius_m > 0 ? 'text-red-600 font-semibold' : '' }}">{{ $fmtSelisih($table->selisih_radius_m) }}</td>
@@ -128,7 +133,7 @@
                             @endif
                             <div class="min-w-0">
                                 <p class="text-sm font-bold text-on-surface truncate">{{ $table->hasUser?->name ?? '-' }}</p>
-                                <p class="text-[11px] text-on-surface-variant">{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}</p>
+                                <p class="text-[11px] text-on-surface-variant">{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }} &middot; {{ $table->kunjungan_id ? 'Kunjungan'.($table->hasKunjungan?->kunjungan_nama ? ' • '.$table->hasKunjungan->kunjungan_nama : '') : 'Checkin' }}</p>
                             </div>
                             <x-badge class="ml-auto" :type="$table->status === 'valid' ? 'success' : ($table->status === 'invalid' ? 'warning' : 'error')">{{ $fmtStatus($table->status) }}</x-badge>
                         </div>

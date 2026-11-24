@@ -53,7 +53,7 @@
     <div class="mt-4 lg:mt-0 rounded-xl border p-5 flex flex-wrap items-center gap-4 {{ $isValid ? 'bg-green-50 border-green-200' : ($isInvalid ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200') }}">
         <span class="material-symbols-outlined text-4xl {{ $isValid ? 'text-green-600' : ($isInvalid ? 'text-amber-600' : 'text-red-600') }}">{{ $isValid ? 'verified' : ($isInvalid ? 'location_off' : 'gpp_bad') }}</span>
         <div class="flex-1 min-w-52">
-            <div class="text-lg font-bold {{ $isValid ? 'text-green-800' : ($isInvalid ? 'text-amber-800' : 'text-red-800') }}">Check-in {{ $statusLabel }}</div>
+            <div class="text-lg font-bold {{ $isValid ? 'text-green-800' : ($isInvalid ? 'text-amber-800' : 'text-red-800') }}">{{ $model->kunjungan_id ? 'Kunjungan' : 'Check-in' }} {{ $statusLabel }}</div>
             <div class="text-sm text-on-surface-variant">{{ $model->hasUser?->name ?? '-' }} &middot; {{ $model->created_at?->format('d M Y H:i:s') ?? '-' }}</div>
         </div>
         <a href="{{ moduleRoute('getTable') }}" class="text-sm px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest hover:underline">Kembali</a>

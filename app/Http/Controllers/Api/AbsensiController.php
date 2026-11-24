@@ -456,6 +456,7 @@ class AbsensiController extends Controller
         $checkin = Checkin::create([
             'signature_id' => $signature->id,
             'user_id' => $user->id,
+            'kunjungan_id' => $validated['kunjungan_id'] ?? null,
             'latitude' => $validated['latitude'],
             'longitude' => $validated['longitude'],
             'accuracy' => $validated['accuracy'] ?? null,
