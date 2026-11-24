@@ -46,9 +46,26 @@ class LhpReportController extends Controller
 
         $data = (clone $query)->orderBy('lhp_tanggal')->orderBy('lhp_id_kebun')->get();
 
+        // Pusingan tiap blok yang dipanen pada tiap baris (sama seperti tabel transaksi).
+        $lhpIds = $data->map(fn ($l) => (int) $l->lhp_id)->all();
+        $pusinganByLhp = [];
+        if ($lhpIds !== []) {
+            $rows = \App\Models\LhpBlok::with(['hasLhp', 'hasBlok'])
+                ->whereIn('lhp_blok_id_lhp', $lhpIds)->get();
+            app(\App\Services\LhpBlokService::class)->attachPusingan($rows);
+            foreach ($rows as $r) {
+                $pusinganByLhp[(int) $r->lhp_blok_id_lhp][] = [
+                    'kode' => $r->hasBlok?->blok_kode ?? '?',
+                    'hari' => $r->pusingan_hari,
+                    'prev' => $r->pusingan_prev,
+                ];
+            }
+        }
+
         return $this->views($this->template(), array_merge($this->share(), [
             'data' => $data,
             'opening' => $this->restanOpening($request),
+            'pusinganByLhp' => $pusinganByLhp,
         ]));
     }
 
@@ -76,6 +93,8 @@ class LhpReportController extends Controller
             fn ($r) => $r->hasBlok?->blok_kode,
         ])->values();
 
+        $this->blokSvc()->attachPusingan($data);
+
         return $this->views($this->template('blok'), array_merge($this->share(), [
             'data' => $data,
         ]));
@@ -97,8 +116,8 @@ class LhpReportController extends Controller
         return response()->streamDownload(function () use ($request, $opening) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
             echo '<head><meta charset="UTF-8"></head><body>';
-            echo '<table><tr><td colspan="29"><b>LAPORAN HARIAN PRODUKSI (LHP)</b></td></tr>';
-            echo '<tr><td colspan="29"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
+            echo '<table><tr><td colspan="30"><b>LAPORAN HARIAN PRODUKSI (LHP)</b></td></tr>';
+            echo '<tr><td colspan="30"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
             echo '<table border="1"><thead><tr>'
                 .'<th>No</th><th>Tanggal</th><th>Hari</th><th>Nama Kebun</th>'
                 .'<th>Luas TM<br>Planted (Ha)</th><th>Luas<br>Panen (Ha)</th><th>TK Panen<br>(HK)</th>'
@@ -110,16 +129,28 @@ class LhpReportController extends Controller
                 .'<th>Restan<br>(Kg)</th><th>Restan<br>Jjg</th><th>Restan Brd<br>(Kg)</th>'
                 .'<th>UP Ha<br>&lt;= 10 Hari</th><th>UP Ha<br>11 s.d 15 Hari</th><th>UP Ha<br>&gt; 15 Hari</th>'
                 .'<th>Pagi<br>Jam 6 - 11</th><th>Siang<br>Jam 11 - 16</th><th>Malam<br>Jam 16 - 6</th><th>Total</th>'
+                .'<th>Pusingan Blok</th>'
                 .'</tr></thead><tbody>';
 
             $no = 0;
             $restan = [];
+            $pusinganCache = [];
+            $blokSvc = app(\App\Services\LhpBlokService::class);
             $this->baseQuery($request)
                 ->orderBy('lhp_tanggal')
                 ->orderBy('lhp_id_kebun')
-                ->chunk(1000, function ($rows) use (&$no, &$restan, $opening) {
+                ->chunk(1000, function ($rows) use (&$no, &$restan, $opening, &$pusinganCache, $blokSvc) {
+                    // Pusingan blok-blok pada chunk ini (histori global, cache antar-chunk).
+                    $blokRows = \App\Models\LhpBlok::with(['hasLhp', 'hasBlok'])
+                        ->whereIn('lhp_blok_id_lhp', $rows->map(fn ($t) => (int) $t->lhp_id)->all())->get();
+                    $blokSvc->attachPusingan($blokRows, $pusinganCache);
+                    $pusMap = [];
+                    foreach ($blokRows as $br) {
+                        $pusMap[(int) $br->lhp_blok_id_lhp][] = ($br->hasBlok?->blok_kode ?? '?').': '.($br->pusingan_hari === null ? 'perdana' : 'Pusingan '.$br->pusingan_hari.' hr');
+                    }
                     foreach ($rows as $table) {
                         $no++;
+                        $pusTxt = implode('; ', $pusMap[(int) $table->lhp_id] ?? []);
                         $kid = $table->lhp_id_kebun;
                         $tk = (float) ($table->lhp_tk_hk ?? 0);
                         $luasPanen = (float) ($table->lhp_luas_panen ?? 0);
@@ -161,7 +192,8 @@ class LhpReportController extends Controller
                             .'<td>'.e($table->lhp_hujan_pagi ?? 0).'</td>'
                             .'<td>'.e($table->lhp_hujan_siang ?? 0).'</td>'
                             .'<td>'.e($table->lhp_hujan_malam ?? 0).'</td>'
-                            .'<td>'.round($hujanPagi + $hujanSiang + $hujanMalam, 2).'</td></tr>';
+                            .'<td>'.round($hujanPagi + $hujanSiang + $hujanMalam, 2).'</td>'
+                            .'<td>'.e($pusTxt !== '' ? $pusTxt : '-').'</td></tr>';
                     }
                     flush();
                 });
@@ -183,20 +215,23 @@ class LhpReportController extends Controller
         return response()->streamDownload(function () use ($request) {
             echo '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">';
             echo '<head><meta charset="UTF-8"></head><body>';
-            echo '<table><tr><td colspan="13"><b>LAPORAN HARIAN PRODUKSI (LHP) PER BLOK</b></td></tr>';
-            echo '<tr><td colspan="13"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
+            echo '<table><tr><td colspan="14"><b>LAPORAN HARIAN PRODUKSI (LHP) PER BLOK</b></td></tr>';
+            echo '<tr><td colspan="14"><b>PERIODE : '.e($request->input('dari') ?: '-').' s/d '.e($request->input('sampai') ?: '-').'</b></td></tr></table><br>';
             echo '<table border="1"><thead><tr>'
                 .'<th>No.</th><th>Tanggal</th><th>Nama Kebun</th><th>Kode Blok</th><th>Nama Blok</th>'
                 .'<th>Luas Panen (Ha)</th>'
                 .'<th>Jjg Panen</th><th>Jjg Kirim</th><th>Restan Jjg</th>'
                 .'<th>Brd Panen (Kg)</th><th>Brd Kirim (Kg)</th><th>Restan Brd (Kg)</th>'
-                .'<th>Restan</th>'
+                .'<th>Restan</th><th>Pusingan</th>'
                 .'</tr></thead><tbody>';
 
             $no = 0;
-            $this->baseBlokQuery($request)->chunk(1000, function ($rows) use (&$no) {
+            $pusinganCache = [];
+            $this->baseBlokQuery($request)->chunk(1000, function ($rows) use (&$no, &$pusinganCache) {
+                $this->blokSvc()->attachPusingan($rows, $pusinganCache);
                 foreach ($rows as $table) {
                     $no++;
+                    $pusingan = $table->pusingan_hari === null ? 'perdana' : ('Pusingan '.$table->pusingan_hari.' hari'.($table->pusingan_prev ? ' (terakhir '.$table->pusingan_prev.')' : ''));
                     echo '<tr><td>'.$no.'</td>'
                         .'<td>'.e($table->hasLhp?->lhp_tanggal?->format('Y-m-d')).'</td>'
                         .'<td>'.e($table->hasLhp?->hasKebun?->kebun_nama ?? '-').'</td>'
@@ -209,7 +244,8 @@ class LhpReportController extends Controller
                         .'<td>'.e($table->lhp_blok_brondolan_panen ?? 0).'</td>'
                         .'<td>'.e($table->lhp_blok_brondolan_kirim ?? 0).'</td>'
                         .'<td>'.e($table->lhp_blok_restan_brondolan ?? 0).'</td>'
-                        .'<td>'.($table->lhp_blok_restan ? 'Ya' : '-').'</td></tr>';
+                        .'<td>'.($table->lhp_blok_restan ? 'Ya' : '-').'</td>'
+                        .'<td>'.e($pusingan).'</td></tr>';
                 }
                 flush();
             });
@@ -254,6 +290,11 @@ class LhpReportController extends Controller
             ->pluck('saldo', 'lhp_id_kebun')
             ->map(fn ($v) => (float) $v)
             ->all();
+    }
+
+    private function blokSvc(): \App\Services\LhpBlokService
+    {
+        return app(\App\Services\LhpBlokService::class);
     }
 
     private function baseQuery(Request $request)

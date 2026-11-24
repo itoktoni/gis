@@ -33,6 +33,7 @@ class LhpController extends Controller
                 'id' => $b->blok_id,
                 'kode' => $b->blok_kode,
                 'nama' => $b->blok_nama,
+                'luas' => $b->blok_luas_ha,
             ])->values())
             ->all();
 
@@ -43,6 +44,32 @@ class LhpController extends Controller
         ];
 
         return array_merge($default, $data);
+    }
+
+    public function getTable(GeneralRequest $request)
+    {
+        $data = $this->getData()->cursorPaginate($request->input('per_page', 25))->withQueryString();
+
+        // Pusingan tiap blok yang dipanen pada tiap transaksi tampil.
+        $lhpIds = $data->getCollection()->map(fn ($l) => (int) $l->lhp_id)->all();
+        $pusinganByLhp = [];
+        if ($lhpIds !== []) {
+            $rows = \App\Models\LhpBlok::with(['hasLhp', 'hasBlok'])
+                ->whereIn('lhp_blok_id_lhp', $lhpIds)->get();
+            app(\App\Services\LhpBlokService::class)->attachPusingan($rows);
+            foreach ($rows as $r) {
+                $pusinganByLhp[(int) $r->lhp_blok_id_lhp][] = [
+                    'kode' => $r->hasBlok?->blok_kode ?? '?',
+                    'hari' => $r->pusingan_hari,
+                ];
+            }
+        }
+
+        return $this->views($this->template(), [
+            'data' => $data,
+            'fields' => $this->getFields(),
+            'pusinganByLhp' => $pusinganByLhp,
+        ]);
     }
 
     protected function baseQuery()

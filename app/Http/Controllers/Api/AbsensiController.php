@@ -170,6 +170,18 @@ class AbsensiController extends Controller
         $user = $request->user();
         $failures = [];
         $rangeFailures = [];
+        $spoofFailures = [];
+
+        // Klasifikasi failure: 'range' = di luar jangkauan/teknis GPS (→ INVALID),
+        // 'spoof' = indikasi pemalsuan (→ PALSU). Tanpa kind = teknis (→ INVALID).
+        $fail = function (string $msg, string $kind = '') use (&$failures, &$rangeFailures, &$spoofFailures) {
+            $failures[] = $msg;
+            if ($kind === 'range') {
+                $rangeFailures[] = $msg;
+            } elseif ($kind === 'spoof') {
+                $spoofFailures[] = $msg;
+            }
+        };
 
         // Proteksi jeda minimal antar check-in DINONAKTIFKAN: user boleh absen
         // berkali-kali (mis. salah foto / salah titik, bisa langsung ulangi).
@@ -191,12 +203,10 @@ class AbsensiController extends Controller
                     (float) $validated['latitude'], (float) $validated['longitude'], (string) $kunjungan->kunjungan_polygon);
                 if ($dPoly === null) {
                     $msg = sprintf('Polygon titik "%s" rusak — hubungi admin', $kunjungan->kunjungan_nama);
-                    $failures[] = $msg;
-                    $rangeFailures[] = $msg;
+                    $fail($msg, 'range');
                 } elseif ($dPoly > $tol) {
                     $msg = sprintf('Di luar area "%s" (%s dari batas)', $kunjungan->kunjungan_nama, formatJarak($dPoly));
-                    $failures[] = $msg;
-                    $rangeFailures[] = $msg;
+                    $fail($msg, 'range');
                 }
                 $jarakM = round($dPoly ?? -1, 1);
                 $selisihRadius = round(($dPoly ?? 0) - $tol, 1);
@@ -208,8 +218,7 @@ class AbsensiController extends Controller
                 $selisihRadius = round($dist - (float) $kunjungan->kunjungan_radius_m, 1);
                 if ($dist > (float) $kunjungan->kunjungan_radius_m) {
                     $msg = sprintf('Di luar titik "%s" (%s, batas %s)', $kunjungan->kunjungan_nama, formatJarak($dist), formatJarak($kunjungan->kunjungan_radius_m));
-                    $failures[] = $msg;
-                    $rangeFailures[] = $msg;
+                    $fail($msg, 'range');
                 }
             }
         }
@@ -224,14 +233,13 @@ class AbsensiController extends Controller
                     (float) $validated['latitude'], (float) $validated['longitude'], (string) $kebun->kebun_polygon
                 );
                 if ($edge === null) {
-                    $failures[] = sprintf('Polygon kebun "%s" rusak/tidak terbaca', $kebun->kebun_nama ?? '-');
+                    $fail(sprintf('Polygon kebun "%s" rusak/tidak terbaca', $kebun->kebun_nama ?? '-'), 'range');
                 } elseif ($edge > $tol) {
                     $msg = sprintf(
                         'Di luar area kebun "%s" (±%s dari batas, toleransi %d m)',
                         $kebun->kebun_nama ?? '-', formatJarak($edge), (int) $tol
                     );
-                    $failures[] = $msg;
-                    $rangeFailures[] = $msg;
+                    $fail($msg, 'range');
                 }
             }
         }
@@ -240,8 +248,7 @@ class AbsensiController extends Controller
         // failure agar status tidak VALID, tapi check-in tetap tersimpan.
         if (isset($validated['accuracy']) && (float) $validated['accuracy'] > (float) config('absensi.max_accuracy_m', 100)) {
             $msg = sprintf('Akurasi GPS buruk (±%.0f m, batas %d m) — pindah ke area terbuka bila berulang', (float) $validated['accuracy'], (int) config('absensi.max_accuracy_m', 100));
-            $failures[] = $msg;
-            $rangeFailures[] = $msg;
+            $fail($msg, 'range');
         }
 
         $payload = json_decode($validated['payload'], true);
@@ -250,46 +257,46 @@ class AbsensiController extends Controller
 
         $diff = abs(now()->diffInSeconds(\Carbon\Carbon::parse($validated['client_timestamp'])));
         if ($diff > $window) {
-            $failures[] = 'Waktu HP tidak sesuai server (selisih > '.($isOffline ? '7 hari' : '5 menit').')';
+            $fail('Waktu HP tidak sesuai server (selisih > '.($isOffline ? '7 hari' : '5 menit').')');
         }
 
         if (! is_array($payload)
             || (int) ($payload['user_id'] ?? 0) !== (int) $user->id
             || abs(now()->diffInSeconds(\Carbon\Carbon::parse($payload['timestamp'] ?? '2000-01-01'))) > $window
         ) {
-            $failures[] = 'Payload check-in tidak valid';
+            $fail('Payload check-in tidak valid', 'spoof');
         } elseif (! $user->checkin_secret) {
-            $failures[] = 'Secret aplikasi hilang, buka ulang menu absensi';
+            $fail('Secret aplikasi hilang, buka ulang menu absensi', 'spoof');
         } else {
             $expected = hash_hmac('sha256', $validated['payload'], hex2bin($user->checkin_secret));
             if (! hash_equals($expected, strtolower($validated['hmac']))) {
-                $failures[] = 'Tanda aplikasi tidak valid (bukan dari aplikasi resmi / data diubah)';
+                $fail('Tanda aplikasi tidak valid (bukan dari aplikasi resmi / data diubah)', 'spoof');
             }
         }
 
         $bytes = file_get_contents($request->file('photo')->getRealPath());
         if (! hash_equals($payload['image_hash'] ?? '', hash('sha256', $bytes))) {
-            $failures[] = 'Foto berubah selama pengiriman';
+            $fail('Foto berubah selama pengiriman', 'spoof');
         }
         if (abs((float) ($payload['lat'] ?? 999) - (float) $validated['latitude']) > 0.0001
             || abs((float) ($payload['lng'] ?? 999) - (float) $validated['longitude']) > 0.0001) {
-            $failures[] = 'Koordinat berubah selama pengiriman';
+            $fail('Koordinat berubah selama pengiriman', 'spoof');
         }
 
         if (! empty($payload['mock'])) {
-            $failures[] = 'GPS palsu (mock location) terdeteksi di HP';
+            $fail('GPS palsu (mock location) terdeteksi di HP', 'spoof');
         }
 
         if (! empty($payload['dev_mode'])) {
-            $failures[] = 'Developer options aktif di HP';
+            $fail('Developer options aktif di HP', 'spoof');
         }
 
         if (! empty($payload['rooted'])) {
-            $failures[] = 'Perangkat di-root (risiko fake GPS level sistem)';
+            $fail('Perangkat di-root (risiko fake GPS level sistem)', 'spoof');
         }
 
         if (! empty($payload['xposed'])) {
-            $failures[] = 'Framework Xposed/LSPosed terdeteksi (risiko bypass deteksi mock)';
+            $fail('Framework Xposed/LSPosed terdeteksi (risiko bypass deteksi mock)', 'spoof');
         }
 
         // Cek selisih lokasi jaringan vs GPS DINONAKTIFKAN: lastKnown NETWORK_PROVIDER
@@ -301,32 +308,32 @@ class AbsensiController extends Controller
             $km = self::distanceM((float) $last->latitude, (float) $last->longitude, (float) $validated['latitude'], (float) $validated['longitude']) / 1000;
             $hours = max(abs(now()->diffInSeconds($last->created_at)) / 3600, 1 / 3600);
             if ($km / $hours > 250) {
-                $failures[] = sprintf('Perpindahan tidak wajar: %.0f km dalam %.0f mnt', $km, $hours * 60);
+                $fail(sprintf('Perpindahan tidak wajar: %.0f km dalam %.0f mnt', $km, $hours * 60), 'spoof');
             }
         }
 
         $acc = $payload['accuracy'] ?? null;
         $used = $payload['sat_used_in_fix'] ?? null;
         if (is_numeric($acc) && (float) $acc < 20 && $used !== null && (int) $used === 0) {
-            $failures[] = 'Akurasi diklaim bagus (<20 m) tapi 0 satelit GNSS terkunci';
+            $fail('Akurasi diklaim bagus (<20 m) tapi 0 satelit GNSS terkunci', 'spoof');
         }
         $gpsTime = $payload['gps_time'] ?? null;
         if (is_numeric($gpsTime)) {
             $gpsDiff = abs(now()->diffInSeconds(\Carbon\Carbon::createFromTimestampMs((int) $gpsTime)));
             if ($gpsDiff > 600) {
-                $failures[] = 'Jam GPS tidak cocok dengan waktu check-in (>10 menit)';
+                $fail('Jam GPS tidak cocok dengan waktu check-in (>10 menit)');
             }
         }
 
         $locAge = $payload['loc_age_ms'] ?? null;
         if (is_numeric($locAge) && ((int) $locAge < 0 || (int) $locAge > 60000)) {
-            $failures[] = 'Fix lokasi basi/di-replay (>60 detik)';
+            $fail('Fix lokasi basi/di-replay (>60 detik)');
         }
 
         if (isset($validated['accuracy']) && (float) $validated['accuracy'] < 5) {
             $recentAcc = Checkin::where('user_id', $user->id)->latest()->limit(3)->pluck('accuracy');
             if ($recentAcc->count() === 3 && $recentAcc->every(fn ($a) => $a !== null && abs((float) $a - (float) $validated['accuracy']) < 0.01)) {
-                $failures[] = 'Pola akurasi identik berulang (ciri fake GPS)';
+                $fail('Pola akurasi identik berulang (ciri fake GPS)', 'spoof');
             }
         }
 
@@ -334,7 +341,7 @@ class AbsensiController extends Controller
             $mKm = self::distanceM((float) $last->latitude, (float) $last->longitude, (float) $validated['latitude'], (float) $validated['longitude']) / 1000;
             $mMin = abs(now()->diffInSeconds($last->created_at)) / 60;
             if ($mKm > 2 && $mMin < 30) {
-                $failures[] = sprintf('Berpindah %.0f km dalam %.0f mnt tapi sensor gerak diam — indikasi teleportasi', $mKm, $mMin);
+                $fail(sprintf('Berpindah %.0f km dalam %.0f mnt tapi sensor gerak diam — indikasi teleportasi', $mKm, $mMin), 'spoof');
             }
         }
 
@@ -348,7 +355,7 @@ class AbsensiController extends Controller
                 $bLng = (float) $parts[1];
                 if (abs($bLat - (float) $validated['latitude']) > 0.0001
                     || abs($bLng - (float) $validated['longitude']) > 0.0001) {
-                    $failures[] = 'Tulisan koordinat di foto tidak cocok dengan lokasi terverifikasi (indikasi manipulasi template)';
+                    $fail('Tulisan koordinat di foto tidak cocok dengan lokasi terverifikasi (indikasi manipulasi template)', 'spoof');
                 }
             }
         }
@@ -360,13 +367,14 @@ class AbsensiController extends Controller
         if (empty($validated['kunjungan_id'])) {
             $failures = [];
             $rangeFailures = [];
+            $spoofFailures = [];
         }
 
         $authentic = empty($failures);
-        // Di luar jangkauan (radius/polygon) = INVALID, bukan PALSU.
-        // PALSU hanya untuk indikasi pemalsuan (mock, root, Xposed, dsb).
-        $rangeOnly = ! $authentic && count($failures) === count($rangeFailures);
-        $status = $authentic ? 'valid' : ($rangeOnly ? 'invalid' : 'fake');
+        // PALSU hanya bila ada indikasi pemalsuan (mock, root, Xposed, dsb).
+        // Selebihnya — di luar jangkauan, akurasi buruk, jam HP meleset,
+        // fix basi — adalah INVALID (Di Luar Jangkauan), bukan PALSU.
+        $status = $authentic ? 'valid' : (! empty($spoofFailures) ? 'fake' : 'invalid');
 
         $address = $validated['address'] ?? null;
         if (empty($address)) {

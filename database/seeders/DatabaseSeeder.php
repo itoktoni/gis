@@ -24,5 +24,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ObjekSeeder::class);
         $this->call(MenuSeeder::class);
         $this->call(LhpSeeder::class);
+        $this->call(DummyPusinganSeeder::class);
     }
 }

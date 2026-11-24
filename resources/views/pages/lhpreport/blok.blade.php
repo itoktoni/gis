@@ -30,7 +30,7 @@
                 <th>Luas Panen<br>(Ha)</th>
                 <th>Jjg<br>Panen</th><th>Jjg<br>Kirim</th><th>Restan<br>Jjg</th>
                 <th>Brd Panen<br>(Kg)</th><th>Brd Kirim<br>(Kg)</th><th>Restan Brd<br>(Kg)</th>
-                <th>Restan</th>
+                <th>Restan</th><th>Pusingan</th>
             </tr>
         </thead>
         <tbody>
@@ -49,9 +49,10 @@
                 <td class="num">{{ $r->lhp_blok_brondolan_kirim }}</td>
                 <td class="num">{{ $r->lhp_blok_restan_brondolan ?? 0 }}</td>
                 <td>{{ $r->lhp_blok_restan ? 'Ya' : '-' }}</td>
+                <td class="num">@if($r->pusingan_hari === null)<span style="color:#888">perdana</span>@else Pusingan {{ $r->pusingan_hari }} hari@if($r->pusingan_prev)<span style="display:block;color:#666;font-size:10px">terakhir {{ \Carbon\Carbon::parse($r->pusingan_prev)->format('d/m/Y') }}</span>@endif@endif</td>
             </tr>
             @empty
-            <tr><td colspan="13" style="text-align:center">Tidak ada data.</td></tr>
+            <tr><td colspan="14" style="text-align:center">Tidak ada data.</td></tr>
             @endforelse
         </tbody>
     </table>

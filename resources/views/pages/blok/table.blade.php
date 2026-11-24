@@ -29,6 +29,8 @@
                 @foreach ($model::$sortColumns as $column)
                 <x-table-sort field="{{ $column }}" label="{{ formatLabel($column) }}" :sortField="$sortField" :sortDir="$sortDir" />
                 @endforeach
+                <th>Panen Terakhir</th>
+                <th>Pusingan</th>
             </x-slot:head>
 
             <x-slot:body>
@@ -39,6 +41,8 @@
                     @foreach ($model::$sortColumns as $column)
                     <td>{{ $column === 'blok_id_kebun' ? $table->hasKebun?->kebun_nama : $table->$column }}</td>
                     @endforeach
+                    <td>{{ $table->panen_terakhir ? \Carbon\Carbon::parse($table->panen_terakhir)->format('d/m/Y') : '-' }}</td>
+                    <td>{{ $table->pusingan_hari === null ? '-' : ('Pusingan '.$table->pusingan_hari.' hari') }}</td>
                 </tr>
                 @endforeach
             </x-slot:body>
@@ -61,6 +65,14 @@
                             <div>
                                 <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Jumlah Pohon</p>
                                 <p class="text-xs font-medium text-on-surface">{{ $table->blok_jumlah_pohon }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Panen Terakhir</p>
+                                <p class="text-xs font-medium text-on-surface">{{ $table->panen_terakhir ? \Carbon\Carbon::parse($table->panen_terakhir)->format('d M Y') : '-' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-on-surface-variant uppercase tracking-wide mb-0.5">Pusingan</p>
+                                <p class="text-xs font-medium text-primary">{{ $table->pusingan_hari === null ? '-' : ('Pusingan '.$table->pusingan_hari.' hari') }}</p>
                             </div>
                         </div>
                         <div class="flex items-center justify-between pt-2 border-t border-outline-variant/50">

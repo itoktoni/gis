@@ -146,7 +146,8 @@
                     row.setAttribute('data-nama', (b.nama || '').toLowerCase());
                     row.innerHTML =
                         '<div class="col-span-12"><p class="font-bold text-primary">' + b.kode + ' <span class="font-normal text-on-surface-variant text-xs">— ' + b.nama + '</span></p></div>' +
-                        fld(b.id, 'luas_panen', 'Luas Panen (Ha)', ex.luas_panen, 'col-span-12') +
+                        fldMaster(b.luas, 'Luas Blok (Ha)') +
+                        fld(b.id, 'luas_panen', 'Luas Panen (Ha)', ex.luas_panen, 'col-span-6') +
                         fld(b.id, 'janjang_panen', 'Jjg Panen', ex.janjang_panen, 'col-span-6') +
                         fld(b.id, 'janjang_kirim', 'Jjg Kirim', ex.janjang_kirim, 'col-span-6') +
                         fld(b.id, 'brondolan_panen', 'Brd Panen (Kg)', ex.brondolan_panen, 'col-span-6') +
@@ -170,6 +171,11 @@
             function fldRo(ro, label) {
                 return '<div class="col-span-6"><label class="text-xs text-on-surface-variant">' + label + '</label>' +
                     '<input type="number" readonly tabindex="-1" data-ro="' + ro + '" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container px-2 py-1.5 text-sm font-semibold"></div>';
+            }
+            // Luas master blok (readonly, dari master blok — tidak disubmit).
+            function fldMaster(val, label) {
+                return '<div class="col-span-6"><label class="text-xs text-on-surface-variant">' + label + '</label>' +
+                    '<input type="number" readonly tabindex="-1" value="' + (val ?? '') + '" class="mt-1 w-full rounded-lg border border-outline-variant bg-surface-container px-2 py-1.5 text-sm font-semibold"></div>';
             }
 
             kebunSel.addEventListener('change', function () { existing = {}; render(); });

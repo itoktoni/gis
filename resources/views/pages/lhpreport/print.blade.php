@@ -36,6 +36,7 @@
                 <th>Restan<br>(Kg)</th><th>Restan<br>Jjg</th><th>Restan Brd<br>(Kg)</th>
                 <th>UP Ha<br>&lt;= 10 Hari</th><th>UP Ha<br>11 s.d 15 Hari</th><th>UP Ha<br>&gt; 15 Hari</th>
                 <th>Pagi<br>Jam 6 - 11</th><th>Siang<br>Jam 11 - 16</th><th>Malam<br>Jam 16 - 6</th><th>Total</th>
+                <th>Pusingan Blok</th>
             </tr>
         </thead>
         <tbody>
@@ -86,9 +87,10 @@
                 <td class="num">{{ $r->lhp_hujan_siang }}</td>
                 <td class="num">{{ $r->lhp_hujan_malam }}</td>
                 <td class="num">{{ round($hujanPagi + $hujanSiang + $hujanMalam, 2) }}</td>
+                <td>@forelse(($pusinganByLhp[$r->lhp_id] ?? []) as $p)<span style="display:block;white-space:nowrap">{{ $p['kode'] }}: {{ $p['hari'] === null ? 'perdana' : 'Pusingan '.$p['hari'].' hr' }}</span>@empty - @endforelse</td>
             </tr>
             @empty
-            <tr><td colspan="29" style="text-align:center">Tidak ada data.</td></tr>
+            <tr><td colspan="30" style="text-align:center">Tidak ada data.</td></tr>
             @endforelse
         </tbody>
     </table>

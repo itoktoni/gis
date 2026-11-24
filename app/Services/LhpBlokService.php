@@ -95,6 +95,82 @@ class LhpBlokService
         ]);
     }
 
+    /**
+     * Pusingan per baris blok = selisih hari antara tanggal panen baris ini
+     * dengan tanggal panen sebelumnya dari blok yang sama (seluruh histori,
+     * tidak dibatasi periode filter). Baris pertama suatu blok → null.
+     *
+     * Hasil ditempel sebagai atribut non-persisted:
+     * - `pusingan_hari` (?int)
+     * - `pusingan_prev` (?string Y-m-d, tanggal panen sebelumnya)
+     *
+     * $cache dipakai antar-chunk pada export agar histori cukup diquery sekali.
+     */
+    public function attachPusingan(iterable $rows, array &$cache = []): void
+    {
+        $rows = $rows instanceof \Traversable ? iterator_to_array($rows) : (is_array($rows) ? $rows : $rows->all());
+        if ($rows === []) {
+            return;
+        }
+
+        $blokIds = collect($rows)->map(fn ($r) => (int) $r->lhp_blok_id_blok)->unique()->values()->all();
+        $missing = array_values(array_diff($blokIds, array_keys($cache)));
+        if ($missing !== []) {
+            $histori = LhpBlok::query()
+                ->select('lhp_blok_id_blok', 'lhp_tanggal')
+                ->join('lhp', 'lhp.lhp_id', '=', 'lhp_blok.lhp_blok_id_lhp')
+                ->whereIn('lhp_blok_id_blok', $missing)
+                ->orderBy('lhp_tanggal')
+                ->get()
+                ->groupBy('lhp_blok_id_blok');
+            foreach ($missing as $bid) {
+                $cache[$bid] = isset($histori[$bid])
+                    ? $histori[$bid]->map(fn ($h) => (string) $h->lhp_tanggal)->unique()->values()->all()
+                    : [];
+            }
+        }
+
+        foreach ($rows as $r) {
+            $bid = (int) $r->lhp_blok_id_blok;
+            $tgl = $r->hasLhp?->lhp_tanggal;
+            $prev = null;
+            if ($tgl) {
+                $cur = $tgl instanceof \Carbon\CarbonInterface ? $tgl->toDateString() : substr((string) $tgl, 0, 10);
+                foreach ($cache[$bid] ?? [] as $d) {
+                    if ($d < $cur && ($prev === null || $d > $prev)) {
+                        $prev = $d;
+                    }
+                }
+            }
+            $r->pusingan_prev = $prev;
+            $r->pusingan_hari = ($prev !== null && $tgl)
+                ? (int) \Carbon\Carbon::parse($prev)->diffInDays(\Carbon\Carbon::parse($tgl))
+                : null;
+        }
+    }
+
+    /**
+     * Peta blok_id => tanggal panen terakhir (Y-m-d) untuk daftar blok.
+     * Dipakai tabel master blok: kolom Panen Terakhir + Pusingan (s/d hari ini).
+     *
+     * @return array<int, string>
+     */
+    public function lastPanenMap(array $blokIds): array
+    {
+        if ($blokIds === []) {
+            return [];
+        }
+
+        return LhpBlok::query()
+            ->selectRaw('lhp_blok_id_blok, MAX(lhp_tanggal) AS tgl')
+            ->join('lhp', 'lhp.lhp_id', '=', 'lhp_blok.lhp_blok_id_lhp')
+            ->whereIn('lhp_blok_id_blok', $blokIds)
+            ->groupBy('lhp_blok_id_blok')
+            ->pluck('tgl', 'lhp_blok_id_blok')
+            ->map(fn ($v) => substr((string) $v, 0, 10))
+            ->all();
+    }
+
     private function num(mixed $v): ?float
     {
         if ($v === null || $v === '') {

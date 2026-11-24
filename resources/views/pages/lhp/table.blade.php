@@ -65,6 +65,7 @@
                 <x-table-sort field="{{ $column }}" label="{{ $lhpLabels[$column] ?? formatLabel($column) }}" :sortField="$sortField" :sortDir="$sortDir" />
                 @endforeach
                 <th>BJR Panen</th>
+                <th>Pusingan Blok</th>
             </x-slot:head>
 
             <x-slot:body>
@@ -77,6 +78,13 @@
                     <td>@if($column === 'lhp_id_kebun'){{ $table->hasKebun?->kebun_nama ?? $table->$column }}@if($table->hasKebun?->hasPt)<span class="block text-[10px] text-on-surface-variant">{{ $table->hasKebun->hasPt->pt_nama }}</span>@endif@elseif(in_array($column, ['lhp_produksi_panen_kg','lhp_produksi_kirim_kg'])){{ number_format($table->$column, 0, ',', '.') }}@elseif($column === 'lhp_tanggal'){{ $table->$column?->format('d/m/Y') }}@else{{ $table->$column }}@endif</td>
                     @endforeach
                     <td>{{ $table->bjr_panen }}</td>
+                    <td>
+                        @forelse(($pusinganByLhp[$table->lhp_id] ?? []) as $p)
+                        <span class="inline-block text-[11px] font-medium bg-surface-container rounded px-1.5 py-0.5 mr-1 mb-0.5 whitespace-nowrap">{{ $p['kode'] }} · {{ $p['hari'] === null ? 'perdana' : $p['hari'].' hr' }}</span>
+                        @empty
+                        -
+                        @endforelse
+                    </td>
                 </tr>
                 @endforeach
             </x-slot:body>
@@ -112,6 +120,13 @@
                                 <x-table-action :model="$model" :id="$table->field_primary" />
                             </div>
                         </div>
+                        @if(!empty($pusinganByLhp[$table->lhp_id] ?? []))
+                        <div class="flex flex-wrap gap-1 pt-2">
+                            @foreach($pusinganByLhp[$table->lhp_id] as $p)
+                            <span class="text-[10px] font-medium bg-surface-container rounded px-1.5 py-0.5 whitespace-nowrap">{{ $p['kode'] }} · {{ $p['hari'] === null ? 'perdana' : $p['hari'].' hr' }}</span>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
                     @endforeach
                 </div>
