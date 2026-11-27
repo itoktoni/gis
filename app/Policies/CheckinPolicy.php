@@ -18,4 +18,9 @@ class CheckinPolicy extends BasePolicy
     {
         return $this->accessProtected($user, __FUNCTION__) ? \Illuminate\Auth\Access\Response::deny() : \Illuminate\Auth\Access\Response::allow();
     }
+
+    public function exportpdf(\App\Models\User $user): \Illuminate\Auth\Access\Response
+    {
+        return $this->accessProtected($user, __FUNCTION__) ? \Illuminate\Auth\Access\Response::deny() : \Illuminate\Auth\Access\Response::allow();
+    }
 }

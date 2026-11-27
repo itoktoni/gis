@@ -72,4 +72,31 @@ return [
     ],
 
     'footer_text' => env('WEBSITE_FOOTER_TEXT', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Gambar Header & Footer Report (cetak / print)
+    |--------------------------------------------------------------------------
+    |
+    | Di-upload lewat Settings → Website. Tampil di atas (header/kop) dan
+    | bawah (footer) setiap halaman cetak report. Fallback teks dipakai
+    | bila gambar header belum di-upload.
+    |
+    */
+
+    'report' => [
+        'header_left' => env('REPORT_HEADER_LEFT', ''),
+        'header_image' => env('REPORT_HEADER_IMAGE', ''),
+        'footer_image' => env('REPORT_FOOTER_IMAGE', ''),
+        'show_header' => env('REPORT_SHOW_HEADER', true),
+        'show_footer' => env('REPORT_SHOW_FOOTER', true),
+        // Fallback teks bila gambar header belum di-upload.
+        'instansi' => env('REPORT_INSTANSI', env('APP_NAME', 'APN KALTENG 2')),
+        'kop_alamat' => env('REPORT_KOP_ALAMAT', env('WEBSITE_ALAMAT', '')),
+        'kota' => env('REPORT_KOTA', ''),
+        'jabatan' => env('REPORT_JABATAN', 'Mengetahui,'),
+        'nama_tertanda' => env('REPORT_NAMA', ''),
+        'nip' => env('REPORT_NIP', ''),
+        'show_print_meta' => env('REPORT_SHOW_PRINT_META', true),
+    ],
 ];

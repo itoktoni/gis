@@ -155,6 +155,27 @@ class CheckinReportController extends Controller
         ]);
     }
 
+    public function getExportPdf(GeneralRequest $request)
+    {
+        set_time_limit(0);
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            $request->merge(['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]);
+        }
+        $data = $this->filteredQuery($request)->orderBy('created_at')->get();
+        $summary = $this->buildSummary($request);
+
+        $kop = \App\Services\ReportKopService::make('REPORT ABSEN', $request->only([
+            'from', 'to', 'user_id', 'status', 'jenis',
+        ]));
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'pages.checkinreport.pdf',
+            array_merge(['data' => $data, 'summary' => $summary], $kop, \App\Services\ReportKopService::pdfImages())
+        )->setPaper('A4', 'landscape');
+
+        return $pdf->stream('report-absen-'.now()->format('Ymd-His').'.pdf');
+    }
+
     public function getExportExcel(GeneralRequest $request)
     {
         set_time_limit(0);

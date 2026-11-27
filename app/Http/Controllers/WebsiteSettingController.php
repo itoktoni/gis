@@ -35,6 +35,21 @@ class WebsiteSettingController extends Controller
             'remove_favicon' => ['nullable', 'boolean'],
             'primary_color' => ['nullable', 'string', 'max:7'],
             'footer_text' => ['nullable', 'string'],
+            'report_header_image' => ['nullable', 'image', 'max:2048'],
+            'report_header_left' => ['nullable', 'image', 'max:2048'],
+            'report_footer_image' => ['nullable', 'image', 'max:2048'],
+            'remove_report_header' => ['nullable', 'boolean'],
+            'remove_report_header_left' => ['nullable', 'boolean'],
+            'remove_report_footer' => ['nullable', 'boolean'],
+            'report_show_header' => ['nullable', 'boolean'],
+            'report_show_footer' => ['nullable', 'boolean'],
+            'report_instansi' => ['nullable', 'string', 'max:255'],
+            'report_kop_alamat' => ['nullable', 'string'],
+            'report_kota' => ['nullable', 'string', 'max:100'],
+            'report_jabatan' => ['nullable', 'string', 'max:100'],
+            'report_nama' => ['nullable', 'string', 'max:100'],
+            'report_nip' => ['nullable', 'string', 'max:50'],
+            'report_show_print_meta' => ['nullable', 'boolean'],
         ]);
 
         $dir = public_path('storage/website');
@@ -52,6 +67,17 @@ class WebsiteSettingController extends Controller
         $envUpdates['WEBSITE_TELEPON'] = $validated['telepon'] ?? '';
         $envUpdates['WEBSITE_EMAIL'] = $validated['email'] ?? '';
         $envUpdates['WEBSITE_FOOTER_TEXT'] = $validated['footer_text'] ?? '';
+
+        // Gambar header & footer report → .env
+        $envUpdates['REPORT_INSTANSI'] = $validated['report_instansi'] ?? '';
+        $envUpdates['REPORT_KOP_ALAMAT'] = $validated['report_kop_alamat'] ?? '';
+        $envUpdates['REPORT_SHOW_HEADER'] = $request->boolean('report_show_header') ? 'true' : 'false';
+        $envUpdates['REPORT_SHOW_FOOTER'] = $request->boolean('report_show_footer') ? 'true' : 'false';
+        $envUpdates['REPORT_KOTA'] = $validated['report_kota'] ?? '';
+        $envUpdates['REPORT_JABATAN'] = $validated['report_jabatan'] ?? '';
+        $envUpdates['REPORT_NAMA'] = $validated['report_nama'] ?? '';
+        $envUpdates['REPORT_NIP'] = $validated['report_nip'] ?? '';
+        $envUpdates['REPORT_SHOW_PRINT_META'] = $request->boolean('report_show_print_meta') ? 'true' : 'false';
 
         // Color → .env
         if (! empty($validated['primary_color'])) {
@@ -74,6 +100,33 @@ class WebsiteSettingController extends Controller
         } elseif (! empty($validated['remove_favicon'])) {
             $this->deleteOld(config('website.favicon'));
             $envUpdates['WEBSITE_FAVICON'] = '';
+        }
+
+        // Header report image (kiri / logo)
+        if ($request->hasFile('report_header_left')) {
+            $this->deleteOld(config('website.report.header_left'));
+            $envUpdates['REPORT_HEADER_LEFT'] = 'storage/website/'.$this->storeFile($request->file('report_header_left'), $dir);
+        } elseif (! empty($validated['remove_report_header_left'])) {
+            $this->deleteOld(config('website.report.header_left'));
+            $envUpdates['REPORT_HEADER_LEFT'] = '';
+        }
+
+        // Header report image (kanan / kop)
+        if ($request->hasFile('report_header_image')) {
+            $this->deleteOld(config('website.report.header_image'));
+            $envUpdates['REPORT_HEADER_IMAGE'] = 'storage/website/'.$this->storeFile($request->file('report_header_image'), $dir);
+        } elseif (! empty($validated['remove_report_header'])) {
+            $this->deleteOld(config('website.report.header_image'));
+            $envUpdates['REPORT_HEADER_IMAGE'] = '';
+        }
+
+        // Footer report image
+        if ($request->hasFile('report_footer_image')) {
+            $this->deleteOld(config('website.report.footer_image'));
+            $envUpdates['REPORT_FOOTER_IMAGE'] = 'storage/website/'.$this->storeFile($request->file('report_footer_image'), $dir);
+        } elseif (! empty($validated['remove_report_footer'])) {
+            $this->deleteOld(config('website.report.footer_image'));
+            $envUpdates['REPORT_FOOTER_IMAGE'] = '';
         }
 
         $this->writeToEnv($envUpdates);

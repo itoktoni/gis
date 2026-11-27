@@ -20,8 +20,11 @@
     </style>
 </head>
 <body>
-    <h2>LAPORAN HARIAN PRODUKSI (LHP)</h2>
-    <div class="sub">Periode: {{ request('dari') ?: '-' }} s/d {{ request('sampai') ?: '-' }} • {{ $data->count() }} baris • Dicetak {{ now()->format('d M Y H:i') }} oleh {{ auth()->user()->name ?? '-' }}</div>
+    @php
+        $judul = 'LAPORAN HARIAN PRODUKSI (LHP)';
+        $filterTitle = 'Periode: '.(request('dari') ?: '-').' s/d '.(request('sampai') ?: '-').' • '.$data->count().' baris';
+    @endphp
+    @include('partials.report-kop', ['judul' => $judul, 'filterTitle' => $filterTitle])
 
     <table class="data" id="reportTable">
         <thead>
@@ -94,6 +97,8 @@
             @endforelse
         </tbody>
     </table>
+
+    @include('partials.report-footer')
 
     <div class="no-print">
         <button type="button" class="btn-print" onclick="window.print()">Cetak / Simpan PDF</button>

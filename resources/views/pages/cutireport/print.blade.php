@@ -4,7 +4,11 @@
 <style>body{font-family:sans-serif;font-size:10pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #333;padding:4px}</style>
 </head>
 <body onload="window.print()">
-<h3>REPORT CUTI {{ request('dari') ? 'PERIODE '.request('dari').' s/d '.request('sampai') : '' }}</h3>
+@php
+    $judul = 'REPORT CUTI';
+    $filterTitle = request('dari') ? 'Periode: '.request('dari').' s/d '.request('sampai') : 'Semua Data';
+@endphp
+@include('partials.report-kop', ['judul' => $judul, 'filterTitle' => $filterTitle])
 <h4>Rekap Sisa Cuti per Karyawan</h4>
 <table>
 <tr><th>Nama</th><th>Kuota</th><th>Terpakai</th><th>Sisa</th></tr>
@@ -20,5 +24,7 @@
 <tr><td>{{ $i+1 }}</td><td>{{ $table->hasUser?->name }}</td><td>{{ $table->cuti_jenis }}</td><td>{{ $table->cuti_tanggal_mulai?->format('Y-m-d') }}</td><td>{{ $table->cuti_tanggal_selesai?->format('Y-m-d') }}</td><td>{{ $table->cuti_jumlah_hari }}</td><td>{{ $table->cuti_status }}</td><td>{{ $table->cuti_keperluan }}</td></tr>
 @endforeach
 </table>
+
+@include('partials.report-footer')
 </body>
 </html>

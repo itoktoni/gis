@@ -14,6 +14,30 @@ class WebsiteSetting
         return config('website');
     }
 
+    /**
+     * Setting gambar header & footer report (config website.report).
+     * Selalu kembalikan default aman agar view cetak tidak error.
+     */
+    public static function report(): array
+    {
+        $cfg = config('website.report', []);
+
+        return array_merge([
+            'header_left' => '',
+            'header_image' => '',
+            'footer_image' => '',
+            'show_header' => true,
+            'show_footer' => true,
+            'instansi' => config('website.name', 'APN KALTENG 2'),
+            'kop_alamat' => config('website.alamat', ''),
+            'kota' => '',
+            'jabatan' => 'Mengetahui,',
+            'nama_tertanda' => '',
+            'nip' => '',
+            'show_print_meta' => true,
+        ], is_array($cfg) ? $cfg : []);
+    }
+
     public static function primaryColor(): string
     {
         $settings = static::merged();

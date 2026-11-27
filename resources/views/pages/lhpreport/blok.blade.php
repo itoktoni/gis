@@ -20,8 +20,11 @@
     </style>
 </head>
 <body>
-    <h2>LAPORAN HARIAN PRODUKSI (LHP) PER BLOK</h2>
-    <div class="sub">Periode: {{ request('dari') ?: '-' }} s/d {{ request('sampai') ?: '-' }} • {{ $data->count() }} baris • Dicetak {{ now()->format('d M Y H:i') }} oleh {{ auth()->user()->name ?? '-' }}</div>
+    @php
+        $judul = 'LAPORAN HARIAN PRODUKSI (LHP) PER BLOK';
+        $filterTitle = 'Periode: '.(request('dari') ?: '-').' s/d '.(request('sampai') ?: '-').' • '.$data->count().' baris';
+    @endphp
+    @include('partials.report-kop', ['judul' => $judul, 'filterTitle' => $filterTitle])
 
     <table class="data" id="reportTable">
         <thead>
@@ -49,13 +52,15 @@
                 <td class="num">{{ $r->lhp_blok_brondolan_kirim }}</td>
                 <td class="num">{{ $r->lhp_blok_restan_brondolan ?? 0 }}</td>
                 <td>{{ $r->lhp_blok_restan ? 'Ya' : '-' }}</td>
-                <td class="num">@if($r->pusingan_hari === null)<span style="color:#888">perdana</span>@else Pusingan {{ $r->pusingan_hari }} hari@if($r->pusingan_prev)<span style="display:block;color:#666;font-size:10px">terakhir {{ \Carbon\Carbon::parse($r->pusingan_prev)->format('d/m/Y') }}</span>@endif@endif</td>
+                <td class="num">@if($r->pusingan_hari === null)<span style="color:#888">perdana</span>@else Pusingan {{ $r->pusingan_hari }} hari @if($r->pusingan_prev)<span style="display:block;color:#666;font-size:10px">terakhir {{ \Carbon\Carbon::parse($r->pusingan_prev)->format('d/m/Y') }}</span> @endif @endif</td>
             </tr>
             @empty
             <tr><td colspan="14" style="text-align:center">Tidak ada data.</td></tr>
             @endforelse
         </tbody>
     </table>
+
+    @include('partials.report-footer')
 
     <div class="no-print">
         <button type="button" class="btn-print" onclick="window.print()">Cetak / Simpan PDF</button>

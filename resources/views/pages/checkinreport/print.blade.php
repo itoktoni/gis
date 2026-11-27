@@ -4,7 +4,11 @@
 <style>body{font-family:sans-serif;font-size:10pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #333;padding:4px}h3,h4{margin:12px 0 6px}</style>
 </head>
 <body onload="window.print()">
-<h3>REPORT ABSEN {{ request('from') ? 'PERIODE '.request('from').' s/d '.request('to') : '' }}</h3>
+@php
+    $judul = 'REPORT ABSEN';
+    $filterTitle = request('from') ? 'Periode: '.request('from').' s/d '.request('to') : 'Semua Data';
+@endphp
+@include('partials.report-kop', ['judul' => $judul, 'filterTitle' => $filterTitle])
 <h4>Summary per Karyawan</h4>
 <table>
 <tr><th>No</th><th>Karyawan</th><th>Total</th><th>Checkin</th><th>Kunjungan</th><th>Valid</th><th>Luar Jangkauan</th><th>Palsu</th><th>Hari Hadir</th><th>% Valid</th></tr>
@@ -20,5 +24,7 @@
 <tr><td>{{ $i+1 }}</td><td>{{ $table->created_at?->format('Y-m-d H:i') }}</td><td>{{ $table->hasUser?->name }}</td><td>{{ $table->kunjungan_id ? 'Kunjungan' : 'Checkin' }}</td><td>{{ $table->hasKunjungan?->kunjungan_nama ?? '-' }}</td><td>{{ $table->status }}</td><td>{{ formatJarak($table->selisih_radius_m, true) }}</td><td>{{ $table->address }}</td></tr>
 @endforeach
 </table>
+
+@include('partials.report-footer')
 </body>
 </html>

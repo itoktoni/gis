@@ -29,6 +29,9 @@
                 <a href="{{ moduleRoute('getPrint', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status'), 'jenis' => request('jenis')])) }}" target="_blank" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">print</span> Print
                 </a>
+                <a href="{{ moduleRoute('getExportPdf', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status'), 'jenis' => request('jenis')])) }}" target="_blank" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-xl">picture_as_pdf</span> PDF
+                </a>
                 <a href="{{ moduleRoute('getExportExcel', array_filter(['from' => request('from'), 'to' => request('to'), 'user_id' => request('user_id'), 'status' => request('status'), 'jenis' => request('jenis')])) }}" class="inline-flex h-10 items-center justify-center gap-1 rounded-lg border border-outline-variant px-4 text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-container">
                     <span class="material-symbols-outlined text-xl">download</span> Excel
                 </a>
@@ -103,7 +106,7 @@
                     </td>
                     <td>
                         @if($table->photo_path)
-                        <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-lg object-cover cursor-zoom-in hover:opacity-80" alt="foto" loading="lazy">
+                        <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-lg object-cover cursor-zoom-in hover:opacity-80" alt="foto check-in {{ $table->hasUser?->name }}" loading="lazy" data-cap-user="{{ $table->hasUser?->name ?? '-' }}" data-cap-date="{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}" data-cap-jenis="{{ $table->kunjungan_id ? 'Kunjungan'.(($table->hasKunjungan?->kunjungan_nama ?? '') !== '' ? ' • '.$table->hasKunjungan->kunjungan_nama : '') : 'Checkin' }}" data-cap-status="{{ $fmtStatus($table->status) }}" data-cap-selisih="{{ $fmtSelisih($table->selisih_radius_m) }}" data-cap-alamat="{{ $table->address ?? '-' }}">
                         @else
                         <span class="text-on-surface-variant">-</span>
                         @endif
@@ -129,7 +132,7 @@
                     <div class="report-card border border-outline-variant rounded-xl p-4 bg-surface-container-lowest shadow-sm cursor-pointer" data-id="{{ $table->field_primary }}" data-photo="{{ $table->photo_path ? Storage::url($table->photo_path) : '' }}" data-address="{{ $table->hasUser?->name ?? '' }} — {{ $table->address ?? '-' }}">
                         <div class="flex items-center gap-3 mb-3">
                             @if($table->photo_path)
-                            <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-xl object-cover cursor-zoom-in" alt="foto" loading="lazy">
+                            <img src="{{ Storage::url($table->photo_path) }}" data-full="{{ Storage::url($table->photo_path) }}" class="photo-thumb w-12 h-12 rounded-xl object-cover cursor-zoom-in" alt="foto check-in {{ $table->hasUser?->name }}" loading="lazy" data-cap-user="{{ $table->hasUser?->name ?? '-' }}" data-cap-date="{{ $table->created_at?->format('d/m/Y H:i') ?? '-' }}" data-cap-jenis="{{ $table->kunjungan_id ? 'Kunjungan'.(($table->hasKunjungan?->kunjungan_nama ?? '') !== '' ? ' • '.$table->hasKunjungan->kunjungan_nama : '') : 'Checkin' }}" data-cap-status="{{ $fmtStatus($table->status) }}" data-cap-selisih="{{ $fmtSelisih($table->selisih_radius_m) }}" data-cap-alamat="{{ $table->address ?? '-' ?>">
                             @endif
                             <div class="min-w-0">
                                 <p class="text-sm font-bold text-on-surface truncate">{{ $table->hasUser?->name ?? '-' }}</p>
@@ -168,52 +171,183 @@
     <script src="/js/table.js"></script>
     <script>initTable('{{ $sortField }}', '{{ $sortDir }}');</script>
 
-    {{-- Popup foto + alamat (lightbox) --}}
-    <div id="photo-popup" class="hidden fixed inset-0 z-[100] overflow-y-auto bg-black/80 p-4 cursor-zoom-out">
-        <div class="min-h-full flex items-center justify-center">
-            <div class="max-w-3xl w-full" onclick="event.stopPropagation()">
-                <img id="photo-popup-img" src="" class="w-full max-h-[70vh] object-contain rounded-xl shadow-2xl bg-black" alt="foto check-in" />
-                <p id="photo-popup-addr" class="mt-2 text-sm text-white/90 text-center"></p>
-                <p class="mt-1 text-xs text-white/60 text-center">Klik di luar gambar untuk menutup</p>
-            </div>
-        </div>
-    </div>
+    {{-- PhotoSwipe lightbox — zoom/pan + tombol download foto (untuk validasi) --}}
+    <link rel="stylesheet" href="{{ asset('vendor/photoswipe/photoswipe.css') }}">
+    <style>
+        .pswp__custom-caption {
+            position: absolute; left: 0; right: 0; bottom: 0; z-index: 160;
+            padding: 16px 18px 14px; color: #fff; font-size: 13px; line-height: 1.55;
+            background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.4) 65%, transparent);
+            pointer-events: none; text-align: left;
+        }
+        .pswp__custom-caption b { font-size: 14px; }
+        .pswp__download-btn { cursor: pointer; }
+    </style>
+    <script src="{{ asset('vendor/photoswipe/photoswipe.umd.min.js') }}"></script>
+    <script src="{{ asset('vendor/photoswipe/photoswipe-lightbox.umd.min.js') }}"></script>
     <script>
         (function () {
-            var popup = document.getElementById('photo-popup');
-            var popupImg = document.getElementById('photo-popup-img');
-            var popupAddr = document.getElementById('photo-popup-addr');
-            if (!popup || !popupImg) return;
-            function openPopup(src, addr) {
-                if (!src) return;
-                document.body.style.overflow = 'hidden';
-                popupImg.src = src;
-                if (popupAddr) popupAddr.textContent = addr || '';
-                popup.classList.remove('hidden');
+            if (window.__checkinPswpInit) return;
+            window.__checkinPswpInit = true;
+
+            function esc(s) {
+                var d = document.createElement('div');
+                d.textContent = (s == null ? '' : String(s));
+                return d.innerHTML;
             }
-            function closePopup() {
-                document.body.style.overflow = '';
-                popup.classList.add('hidden');
-                popupImg.src = '';
+
+            function captionHtml(cap) {
+                return '<div><b>' + esc(cap.user) + '</b> &nbsp;&middot;&nbsp; ' + esc(cap.date) + '</div>'
+                    + '<div>' + esc(cap.jenis) + ' &nbsp;&middot;&nbsp; Status: ' + esc(cap.status)
+                    + ' &nbsp;&middot;&nbsp; Selisih: ' + esc(cap.selisih) + '</div>'
+                    + '<div style="opacity:.9">' + esc(cap.alamat) + '</div>';
             }
+
+            // Kumpulkan foto unik dari semua thumbnail (desktop + mobile duplikat).
+            function collect() {
+                var all = Array.prototype.slice.call(document.querySelectorAll('img.photo-thumb[data-full]'));
+                var groups = {};
+                all.forEach(function (el) {
+                    var url = el.getAttribute('data-full');
+                    if (!url) return;
+                    (groups[url] = groups[url] || []).push(el);
+                });
+
+                var items = [];
+                var byUrl = {};
+                Object.keys(groups).forEach(function (url) {
+                    var els = groups[url];
+                    var host = els[0], w = 0, h = 0, vis = null;
+                    for (var i = 0; i < els.length; i++) {
+                        if (els[i].naturalWidth) { host = els[i]; w = els[i].naturalWidth; h = els[i].naturalHeight; break; }
+                    }
+                    for (var j = 0; j < els.length; j++) {
+                        var r = els[j].getBoundingClientRect();
+                        if (r.width > 0 && r.height > 0) { vis = els[j]; break; }
+                    }
+                    var cap = {
+                        user: host.getAttribute('data-cap-user') || '-',
+                        date: host.getAttribute('data-cap-date') || '-',
+                        jenis: host.getAttribute('data-cap-jenis') || '-',
+                        status: host.getAttribute('data-cap-status') || '-',
+                        selisih: host.getAttribute('data-cap-selisih') || '-',
+                        alamat: host.getAttribute('data-cap-alamat') || '-'
+                    };
+                    byUrl[url] = items.length;
+                    items.push({
+                        src: url,
+                        w: w,
+                        h: h,
+                        msrc: url,
+                        element: vis || host,
+                        alt: cap.user + ' — ' + cap.date,
+                        cap: cap,
+                        captionHtml: captionHtml(cap)
+                    });
+                });
+
+                return { items: items, byUrl: byUrl };
+            }
+
+            var lightbox = null;
+            function ensureLightbox() {
+                if (lightbox) return lightbox;
+
+                lightbox = new PhotoSwipeLightbox({
+                    pswpModule: PhotoSwipe,
+                    arrowKeys: true,
+                    escKey: true,
+                    returnFocus: true,
+                    counter: true,
+                    zoom: true,
+                    wheelToZoom: true,
+                    close: true,
+                    preload: [1, 2]
+                });
+
+                lightbox.on('uiRegister', function () {
+                    // Tombol download foto (bukti check-in) di toolbar atas.
+                    lightbox.pswp.ui.registerElement({
+                        name: 'download-button',
+                        ariaLabel: 'Download foto',
+                        className: 'pswp__download-btn',
+                        order: 8,
+                        isButton: true,
+                        html: '<svg aria-hidden="true" class="pswp__icn" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+                        onClick: function () {
+                            var data = lightbox.pswp.currSlide.data;
+                            var src = data.src || '';
+                            var ext = (src.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
+                            var safe = function (s) {
+                                return String(s || '').trim().replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '') || 'foto';
+                            };
+                            var name = 'checkin-' + safe(data.cap && data.cap.user) + '-' + safe(data.cap && data.cap.date) + '.' + ext;
+                            var a = document.createElement('a');
+                            a.href = src;
+                            a.download = name;
+                            a.rel = 'noopener';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        }
+                    });
+
+                    // Caption (info validasi) di bagian bawah foto.
+                    lightbox.pswp.ui.registerElement({
+                        name: 'custom-caption',
+                        className: 'pswp__custom-caption',
+                        appendTo: 'wrapper',
+                        order: 9,
+                        onInit: function (el, pswp) {
+                            var render = function () {
+                                el.innerHTML = (pswp.currSlide && pswp.currSlide.data.captionHtml) || '';
+                            };
+                            pswp.on('change', render);
+                            render();
+                        }
+                    });
+                });
+
+                return lightbox;
+            }
+
+            function open(url) {
+                if (!url || !window.PhotoSwipe || !window.PhotoSwipeLightbox) return;
+                var c = collect();
+                if (!c.items.length) return;
+                var idx = Object.prototype.hasOwnProperty.call(c.byUrl, url) ? c.byUrl[url] : 0;
+
+                // Pastikan dimensi tiap foto diketahui agar zoom/fit akurat.
+                var need = c.items.filter(function (it) { return !it.w; });
+                function go() { ensureLightbox().loadAndOpen(idx, c.items); }
+                if (!need.length) { go(); return; }
+
+                var pending = need.length;
+                need.forEach(function (it) {
+                    var im = new Image();
+                    im.onload = im.onerror = function () {
+                        it.w = im.naturalWidth || 1200;
+                        it.h = im.naturalHeight || 1600;
+                        if (--pending === 0) go();
+                    };
+                    im.src = it.src;
+                });
+            }
+
             document.addEventListener('click', function (e) {
-                var thumb = e.target.closest ? e.target.closest('.photo-thumb') : null;
-                if (thumb && thumb.dataset.full) {
-                    var row = thumb.closest('tr');
-                    openPopup(thumb.dataset.full, row ? row.dataset.address : '');
+                var t = e.target;
+                if (!t || !t.closest) return;
+                if (t.closest('a,button,input,label,select,textarea')) return;
+
+                var thumb = t.closest('img.photo-thumb[data-full]');
+                if (thumb && thumb.getAttribute('data-full')) {
+                    open(thumb.getAttribute('data-full'));
                     return;
                 }
-                var row = e.target.closest ? (e.target.closest('tr.report-row') || e.target.closest('.report-card')) : null;
-                if (row && !e.target.closest('a,button')) {
-                    openPopup(row.dataset.photo, (row.dataset.address || '') + '');
-                    return;
+                var row = t.closest('tr.report-row') || t.closest('.report-card');
+                if (row && row.getAttribute('data-photo')) {
+                    open(row.getAttribute('data-photo'));
                 }
-                if (!popup.classList.contains('hidden') && e.target.closest('#photo-popup')) {
-                    closePopup();
-                }
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && !popup.classList.contains('hidden')) closePopup();
             });
         })();
     </script>
